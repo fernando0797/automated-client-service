@@ -1,0 +1,24 @@
+{
+  "administrative": [
+    "account_access",
+    "cancellation_request",
+    "delivery_problem",
+    "payment_issue",
+    "refund_request"
+  ],
+  "product_support": [
+    "peripheral_compatibility",
+    "product_compatibility",
+    "product_recommendation",
+    "product_setup"
+  ],
+  "technical_support": [
+    "battery_life",
+    "data_loss",
+    "display_issue",
+    "hardware_issue",
+    "installation_support",
+    "network_problem",
+    "software_bug"
+  ]
+}

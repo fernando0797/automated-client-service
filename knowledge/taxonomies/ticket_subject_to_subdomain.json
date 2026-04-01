@@ -1,0 +1,18 @@
+{
+  "account access": "account_access",
+  "battery life": "battery_life",
+  "cancellation request": "cancellation_request",
+  "data loss": "data_loss",
+  "delivery problem": "delivery_problem",
+  "display issue": "display_issue",
+  "hardware issue": "hardware_issue",
+  "installation support": "installation_support",
+  "network problem": "network_problem",
+  "payment issue": "payment_issue",
+  "peripheral compatibility": "peripheral_compatibility",
+  "product compatibility": "product_compatibility",
+  "product recommendation": "product_recommendation",
+  "product setup": "product_setup",
+  "refund request": "refund_request",
+  "software bug": "software_bug"
+}

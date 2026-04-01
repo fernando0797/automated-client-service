@@ -1,0 +1,41 @@
+# Virtual environment
+
+.venv/
+
+# Python cache
+
+**pycache**/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables
+
+.env
+
+# IDEs
+
+.idea/
+.vscode/
+
+# System files
+
+.DS_Store
+Thumbs.db
+
+# Data files
+
+data/
+
+# Databases
+
+*.db
+*.sqlite3
+
+# Logs
+
+*.log
+
+# Jupyter
+
+.ipynb_checkpoints/

@@ -1,0 +1,47 @@
+{
+  "iphone": [
+    "iphone",
+    "apple iphone"
+  ],
+  "macbook_pro": [
+    "macbook",
+    "macbook pro"
+  ],
+  "nintendo_switch": [
+    "switch",
+    "nintendo switch"
+  ],
+  "sony_playstation": [
+    "ps5",
+    "ps4",
+    "playstation"
+  ],
+  "xbox": [
+    "xbox",
+    "xbox console"
+  ],
+  "google_nest": [
+    "nest",
+    "google nest"
+  ],
+  "amazon_echo": [
+    "echo",
+    "alexa device"
+  ],
+  "fitbit_versa_smartwatch": [
+    "fitbit versa",
+    "versa"
+  ],
+  "fitbit_charge": [
+    "fitbit charge"
+  ],
+  "microsoft_office": [
+    "office",
+    "microsoft office",
+    "365"
+  ],
+  "adobe_photoshop": [
+    "photoshop",
+    "adobe photoshop"
+  ]
+}
