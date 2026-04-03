@@ -1,5 +1,12 @@
 # Lenovo ThinkPad
 
+## Metadata
+json
+{
+  "product": "lenovo_thinkpad",
+  "type": "product"
+}
+
 ## Overview
 Lenovo ThinkPad is a business-oriented laptop line known for durability, reliability, and strong performance in professional environments.
 
@@ -44,7 +51,3 @@ Lenovo ThinkPad is a business-oriented laptop line known for durability, reliabi
 - Keep BIOS and drivers updated
 - Use official accessories
 - Regular system diagnostics
-
-## Metadata
-product: lenovo_thinkpad
-category: laptop

@@ -1,5 +1,15 @@
 # Payment Issue
 
+## Metadata
+
+```json
+{
+  "domain": "administrative",
+  "subdomain": "payment_issue",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Problems encountered during payment processes, including failed transactions, incorrect charges, or billing errors.
 
@@ -34,7 +44,3 @@ Problems encountered during payment processes, including failed transactions, in
 - Be clear and transparent
 - Avoid blaming the user
 - Reassure about payment security
-
-## Metadata
-domain: administrative
-subdomain: payment_issue

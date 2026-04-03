@@ -1,5 +1,15 @@
 # Peripheral Compatibility
 
+## Metadata
+
+```json
+{
+  "domain": "product_support",
+  "subdomain": "peripheral_compatibility",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Issues related to compatibility between a device and external peripherals such as controllers, headphones, keyboards, or accessories.
 
@@ -31,7 +41,3 @@ Issues related to compatibility between a device and external peripherals such a
 - Clarify model compatibility
 - Avoid assumptions
 - Suggest official documentation if needed
-
-## Metadata
-domain: product_support
-subdomain: peripheral_compatibility

@@ -1,5 +1,14 @@
 # Apple AirPods
 
+## Metadata
+
+```json
+{
+  "product": "apple_airpods",
+  "type": "product"
+}
+```
+
 ## Overview
 Apple AirPods are wireless earbuds designed for seamless integration with Apple devices, offering high-quality audio and convenience.
 
@@ -44,7 +53,3 @@ Apple AirPods are wireless earbuds designed for seamless integration with Apple 
 - Keep case charged
 - Clean regularly
 - Store properly
-
-## Metadata
-product: apple_airpods
-category: audio_device

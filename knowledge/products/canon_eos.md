@@ -1,5 +1,12 @@
 # Canon EOS
 
+## Metadata
+json
+{
+  "product": "canon_eos",
+  "type": "product"
+}
+
 ## Overview
 Canon EOS is a camera system that includes both DSLR and mirrorless cameras, widely used for professional photography and videography.
 
@@ -47,7 +54,3 @@ Canon EOS is a camera system that includes both DSLR and mirrorless cameras, wid
 - Keep firmware updated
 - Use high-speed SD cards
 - Avoid prolonged overheating
-
-## Metadata
-product: canon_eos
-category: camera

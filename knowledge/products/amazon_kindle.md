@@ -1,5 +1,14 @@
 # Amazon Kindle
 
+## Metadata
+
+```json
+{
+  "product": "amazon_kindle",
+  "type": "product"
+}
+```
+
 ## Overview
 Amazon Kindle is an e-reader device designed for reading digital books using e-ink technology.
 
@@ -44,7 +53,3 @@ Amazon Kindle is an e-reader device designed for reading digital books using e-i
 - Keep Wi-Fi off when not needed
 - Avoid full battery depletion
 - Update firmware regularly
-
-## Metadata
-product: amazon_kindle
-category: device

@@ -1,5 +1,12 @@
 # Sony Xperia
 
+## Metadata
+json
+{
+  "product": "sony_xperia",
+  "type": "product"
+}
+
 ## Overview
 Sony Xperia smartphones focus on multimedia capabilities, especially camera and video performance.
 
@@ -39,7 +46,3 @@ Sony Xperia smartphones focus on multimedia capabilities, especially camera and 
 - Keep OS updated
 - Avoid overheating
 - Maintain storage
-
-## Metadata
-product: sony_xperia
-category: smartphone

@@ -1,5 +1,12 @@
 # Nest Thermostat
 
+## Metadata
+json
+{
+  "product": "nest_thermostat",
+  "type": "product"
+}
+
 ## Overview
 Nest Thermostat is a smart home device that controls heating and cooling systems, optimizing energy use and comfort.
 
@@ -40,7 +47,3 @@ Nest Thermostat is a smart home device that controls heating and cooling systems
 - Install correctly
 - Keep firmware updated
 - Ensure stable Wi-Fi
-
-## Metadata
-product: nest_thermostat
-category: smart_home

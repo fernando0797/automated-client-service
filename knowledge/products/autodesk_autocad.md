@@ -1,5 +1,14 @@
 # Autodesk AutoCAD
 
+## Metadata
+
+```json
+{
+  "product": "autodesk_autocad",
+  "type": "product"
+}
+```
+
 ## Overview
 AutoCAD is a professional CAD software used for 2D and 3D design in engineering, architecture, and construction.
 
@@ -43,7 +52,3 @@ AutoCAD is a professional CAD software used for 2D and 3D design in engineering,
 - Save frequently
 - Use version control
 - Keep backups
-
-## Metadata
-product: autodesk_autocad
-category: software

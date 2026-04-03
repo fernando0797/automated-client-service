@@ -1,5 +1,12 @@
 # GoPro Hero
 
+## Metadata
+json
+{
+  "product": "gopro_hero",
+  "type": "product"
+}
+
 ## Overview
 The GoPro Hero is a compact action camera designed for capturing high-quality video and images in extreme conditions. It is widely used for sports, outdoor activities, and content creation.
 
@@ -52,7 +59,3 @@ The GoPro Hero is a compact action camera designed for capturing high-quality vi
 - Use high-speed SD cards
 - Keep firmware updated
 - Avoid fully draining battery frequently
-
-## Metadata
-product: gopro_hero
-category: action_camera

@@ -1,5 +1,14 @@
 # Account Access
 
+## Metadata
+```json
+{
+  "domain": "administrative",
+  "subdomain": "account_access",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Issues related to users being unable to access their accounts. This includes login failures, password issues, account lockouts, and authentication errors.
 
@@ -39,7 +48,3 @@ Issues related to users being unable to access their accounts. This includes log
 - Provide clear step-by-step recovery instructions
 - Never ask for passwords
 - Reinforce security best practices
-
-## Metadata
-domain: administrative
-subdomain: account_access

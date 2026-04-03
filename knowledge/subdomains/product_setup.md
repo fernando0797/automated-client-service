@@ -1,5 +1,15 @@
 # Product Setup
 
+## Metadata
+
+```json
+{
+  "domain": "product_support",
+  "subdomain": "product_setup",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Issues related to initial configuration and setup of a product.
 
@@ -31,7 +41,3 @@ Issues related to initial configuration and setup of a product.
 - Provide step-by-step guidance
 - Keep instructions simple
 - Confirm each step
-
-## Metadata
-domain: product_support
-subdomain: product_setup

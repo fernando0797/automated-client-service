@@ -1,5 +1,12 @@
 # Samsung Soundbar
 
+## Metadata
+json
+{
+  "product": "samsung_soundbar",
+  "type": "product"
+}
+
 ## Overview
 Samsung Soundbars are external audio systems designed to enhance TV sound quality, offering immersive audio experiences.
 
@@ -45,7 +52,3 @@ Samsung Soundbars are external audio systems designed to enhance TV sound qualit
 - Use HDMI ARC for best quality
 - Keep firmware updated
 - Avoid signal interference
-
-## Metadata
-product: samsung_soundbar
-category: audio_device

@@ -1,5 +1,15 @@
 # Product Recommendation
 
+## Metadata
+
+```json
+{
+  "domain": "product_support",
+  "subdomain": "product_recommendation",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Requests from users seeking advice on which product to choose based on their needs and preferences.
 
@@ -29,7 +39,3 @@ Requests from users seeking advice on which product to choose based on their nee
 - Personalize recommendations
 - Be neutral and unbiased
 - Avoid upselling aggressively
-
-## Metadata
-domain: product_support
-subdomain: product_recommendation

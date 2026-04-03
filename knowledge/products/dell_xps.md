@@ -1,5 +1,12 @@
 # Dell XPS
 
+## Metadata
+json
+{
+  "product": "dell_xps",
+  "type": "product"
+}
+
 ## Overview
 The Dell XPS is a premium laptop line known for performance, build quality, and high-resolution displays.
 
@@ -45,7 +52,3 @@ The Dell XPS is a premium laptop line known for performance, build quality, and 
 - Keep drivers updated
 - Avoid overheating environments
 - Use official chargers
-
-## Metadata
-product: dell_xps
-category: laptop

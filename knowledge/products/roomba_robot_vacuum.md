@@ -1,5 +1,12 @@
 # Roomba Robot Vacuum
 
+## Metadata
+json
+{
+  "product": "roomba_robot_vacuum",
+  "type": "product"
+}
+
 ## Overview
 Roomba is a robotic vacuum cleaner developed by iRobot, designed to autonomously clean floors using sensors, mapping technology, and programmable schedules. It is widely used in smart homes for automated cleaning.
 
@@ -56,7 +63,3 @@ Roomba is a robotic vacuum cleaner developed by iRobot, designed to autonomously
 - Keep sensors dust-free
 - Schedule regular cleaning cycles
 - Avoid cables and small obstacles
-
-## Metadata
-product: roomba_robot_vacuum
-category: home_appliance

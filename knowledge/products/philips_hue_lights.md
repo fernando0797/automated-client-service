@@ -1,5 +1,12 @@
 # Philips Hue Lights
 
+## Metadata
+json
+{
+  "product": "philips_hue_lights",
+  "type": "product"
+}
+
 ## Overview
 Philips Hue is a smart lighting system that allows users to control lighting remotely and customize colors and brightness.
 
@@ -35,7 +42,3 @@ Philips Hue is a smart lighting system that allows users to control lighting rem
 - Keep bridge updated
 - Place bridge centrally
 - Maintain stable Wi-Fi
-
-## Metadata
-product: philips_hue_lights
-category: smart_home

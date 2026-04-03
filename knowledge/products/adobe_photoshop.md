@@ -1,5 +1,14 @@
 # Adobe Photoshop
 
+## Metadata
+
+```json
+{
+  "product": "adobe_photoshop",
+  "type": "product"
+}
+```
+
 ## Overview
 Adobe Photoshop is a professional image editing and design software widely used for photo manipulation, graphic design, and digital art.
 
@@ -46,7 +55,3 @@ Adobe Photoshop is a professional image editing and design software widely used 
 - Save frequently and enable autosave
 - Use non-destructive editing (layers, masks)
 - Keep software updated
-
-## Metadata
-product: adobe_photoshop
-category: software

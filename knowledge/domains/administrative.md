@@ -1,7 +1,12 @@
----
-domain: administrative
-type: domain_doc
----
+# Administrative
+
+## Metadata
+```json
+{
+  "domain": "administrative",
+  "type": "domain"
+}
+```
 
 # Administrative Support Guidelines
 

@@ -1,5 +1,12 @@
 # LG Smart TV
 
+## Metadata
+json
+{
+  "product": "lg_smart_tv",
+  "type": "product"
+}
+
 ## Overview
 LG Smart TVs are internet-connected televisions running webOS, enabling streaming, apps, and smart home integration.
 
@@ -46,7 +53,3 @@ LG Smart TVs are internet-connected televisions running webOS, enabling streamin
 - Keep firmware updated
 - Use wired connection for stability
 - Avoid overloading apps
-
-## Metadata
-product: lg_smart_tv
-category: television

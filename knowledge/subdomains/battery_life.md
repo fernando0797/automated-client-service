@@ -1,5 +1,14 @@
 # Battery Life
 
+## Metadata
+```json
+{
+  "domain": "technical_support",
+  "subdomain": "battery_life",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Issues where a device's battery drains faster than expected, does not hold charge, or behaves inconsistently.
 
@@ -39,7 +48,3 @@ Issues where a device's battery drains faster than expected, does not hold charg
 - Suggest optimizations before hardware conclusions
 - Provide safe charging practices
 - Avoid recommending risky actions
-
-## Metadata
-domain: technical_support
-subdomain: battery_life

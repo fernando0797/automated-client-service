@@ -1,5 +1,14 @@
 # Delivery Problem
 
+## Metadata
+```json
+{
+  "domain": "administrative",
+  "subdomain": "delivery_problem",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Issues related to shipping, delivery delays, lost packages, or incorrect deliveries.
 
@@ -34,7 +43,3 @@ Issues related to shipping, delivery delays, lost packages, or incorrect deliver
 - Provide clear timelines
 - Avoid blaming courier directly
 - Offer solutions (refund/replacement)
-
-## Metadata
-domain: administrative
-subdomain: delivery_problem

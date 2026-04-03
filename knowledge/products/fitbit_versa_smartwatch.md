@@ -1,5 +1,12 @@
 # Fitbit Versa Smartwatch
 
+## Metadata
+json
+{
+  "product": "fitbit_versa_smartwatch",
+  "type": "product"
+}
+
 ## Overview
 Fitbit Versa is a smartwatch that combines fitness tracking with smart features such as notifications, apps, and music control.
 
@@ -44,7 +51,3 @@ Fitbit Versa is a smartwatch that combines fitness tracking with smart features 
 - Keep firmware updated
 - Avoid overloading apps
 - Charge regularly
-
-## Metadata
-product: fitbit_versa_smartwatch
-category: wearable

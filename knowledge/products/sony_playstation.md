@@ -1,5 +1,12 @@
 # Sony PlayStation
 
+## Metadata
+json
+{
+  "product": "sony_playstation",
+  "type": "product"
+}
+
 ## Overview
 Sony PlayStation is a gaming console platform offering high-performance gaming, online services, and multimedia capabilities.
 
@@ -40,7 +47,3 @@ Sony PlayStation is a gaming console platform offering high-performance gaming, 
 - Keep system updated
 - Ensure proper ventilation
 - Use official accessories
-
-## Metadata
-product: sony_playstation
-category: gaming_console

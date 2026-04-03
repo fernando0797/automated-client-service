@@ -1,5 +1,12 @@
 # LG Washing Machine
 
+## Metadata
+json
+{
+  "product": "lg_washing_machine",
+  "type": "product"
+}
+
 ## Overview
 LG washing machines are home appliances designed for efficient and automated laundry cleaning, often featuring smart technology and energy efficiency.
 
@@ -42,7 +49,3 @@ LG washing machines are home appliances designed for efficient and automated lau
 - Do not overload
 - Clean filter regularly
 - Use correct detergent
-
-## Metadata
-product: lg_washing_machine
-category: home_appliance

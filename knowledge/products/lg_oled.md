@@ -1,5 +1,12 @@
 # LG OLED TV
 
+## Metadata
+json
+{
+  "product": "lg_oled",
+  "type": "product"
+}
+
 ## Overview
 LG OLED TVs are high-end televisions featuring self-emissive pixels, delivering superior contrast, color accuracy, and viewing angles.
 
@@ -43,7 +50,3 @@ LG OLED TVs are high-end televisions featuring self-emissive pixels, delivering 
 - Avoid static images for long periods
 - Keep firmware updated
 - Use energy-saving settings
-
-## Metadata
-product: lg_oled
-category: television

@@ -1,5 +1,12 @@
 # Nikon D Series
 
+## Metadata
+json
+{
+  "product": "nikon_d",
+  "type": "product"
+}
+
 ## Overview
 Nikon D Series are DSLR cameras designed for photography enthusiasts and professionals, offering manual control and high image quality.
 
@@ -41,7 +48,3 @@ Nikon D Series are DSLR cameras designed for photography enthusiasts and profess
 - Keep lens clean
 - Use recommended SD cards
 - Update firmware
-
-## Metadata
-product: nikon_d
-category: camera

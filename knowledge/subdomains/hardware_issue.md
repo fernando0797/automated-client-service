@@ -1,5 +1,14 @@
 # Hardware Issue
 
+## Metadata
+```json
+{
+  "domain": "technical_support",
+  "subdomain": "hardware_issue",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Problems related to physical components of a device.
 
@@ -33,7 +42,3 @@ Problems related to physical components of a device.
 - Prioritize safety
 - Avoid risky instructions
 - Recommend official repair channels
-
-## Metadata
-domain: technical_support
-subdomain: hardware_issue

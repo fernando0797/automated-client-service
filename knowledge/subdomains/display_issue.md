@@ -1,5 +1,14 @@
 # Display Issue
 
+## Metadata
+```json
+{
+  "domain": "technical_support",
+  "subdomain": "display_issue",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Problems related to screens, including visual defects, flickering, resolution issues, or display failures.
 
@@ -34,7 +43,3 @@ Problems related to screens, including visual defects, flickering, resolution is
 - Ask about recent changes (drops, updates)
 - Provide safe troubleshooting
 - Avoid recommending hardware opening
-
-## Metadata
-domain: technical_support
-subdomain: display_issue

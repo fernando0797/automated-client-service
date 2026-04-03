@@ -1,5 +1,12 @@
 # Google Nest
 
+## Metadata
+json
+{
+  "product": "google_nest",
+  "type": "product"
+}
+
 ## Overview
 Google Nest is a smart home ecosystem that includes thermostats, speakers, cameras, and displays, designed for home automation.
 
@@ -42,7 +49,3 @@ Google Nest is a smart home ecosystem that includes thermostats, speakers, camer
 - Keep firmware updated
 - Secure Wi-Fi network
 - Place devices strategically
-
-## Metadata
-product: google_nest
-category: smart_home

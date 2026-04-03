@@ -1,5 +1,12 @@
 # Samsung Galaxy
 
+## Metadata
+json
+{
+  "product": "samsung_galaxy",
+  "type": "product"
+}
+
 ## Overview
 Samsung Galaxy is a line of Android smartphones known for high-end hardware, customizable software (One UI), and advanced display technology.
 
@@ -53,7 +60,3 @@ Samsung Galaxy is a line of Android smartphones known for high-end hardware, cus
 - Keep system updated
 - Avoid extreme temperatures
 - Manage background processes
-
-## Metadata
-product: samsung_galaxy
-category: smartphone

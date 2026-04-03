@@ -1,5 +1,12 @@
 # PlayStation
 
+## Metadata
+json
+{
+  "product": "playstation",
+  "type": "product"
+}
+
 ## Overview
 PlayStation is a gaming console developed by Sony, offering high-performance gaming, online services, and multimedia capabilities.
 
@@ -40,7 +47,3 @@ PlayStation is a gaming console developed by Sony, offering high-performance gam
 - Keep system updated
 - Maintain ventilation
 - Use official accessories
-
-## Metadata
-product: playstation
-category: gaming_console

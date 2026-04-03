@@ -1,5 +1,12 @@
 # MacBook Pro
 
+## Metadata
+json
+{
+  "product": "macbook_pro",
+  "type": "product"
+}
+
 ## Overview
 MacBook Pro is Apple’s high-performance laptop line, designed for professionals requiring power, efficiency, and seamless ecosystem integration.
 
@@ -44,7 +51,3 @@ MacBook Pro is Apple’s high-performance laptop line, designed for professional
 - Keep macOS updated
 - Avoid overheating
 - Use original chargers
-
-## Metadata
-product: macbook_pro
-category: laptop

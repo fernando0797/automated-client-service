@@ -1,5 +1,15 @@
 # Product Compatibility
 
+## Metadata
+
+```json
+{
+  "domain": "product_support",
+  "subdomain": "product_compatibility",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Issues regarding whether different products, software, or systems can work together.
 
@@ -31,7 +41,3 @@ Issues regarding whether different products, software, or systems can work toget
 - Provide clear compatibility info
 - Avoid vague answers
 - Suggest alternatives when possible
-
-## Metadata
-domain: product_support
-subdomain: product_compatibility

@@ -1,5 +1,14 @@
 # Canon DSLR Camera
 
+## Metadata
+
+```json
+{
+  "product": "canon_dslr_camera",
+  "type": "product"
+}
+```
+
 ## Overview
 Canon DSLR cameras are digital single-lens reflex cameras designed for photography enthusiasts and professionals, offering manual controls and interchangeable lenses.
 
@@ -46,7 +55,3 @@ Canon DSLR cameras are digital single-lens reflex cameras designed for photograp
 - Keep sensor and lens clean
 - Use protective cases
 - Update firmware
-
-## Metadata
-product: canon_dslr_camera
-category: camera

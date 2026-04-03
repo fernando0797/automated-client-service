@@ -1,5 +1,12 @@
 # Microsoft Office
 
+## Metadata
+json
+{
+  "product": "microsoft_office",
+  "type": "product"
+}
+
 ## Overview
 Microsoft Office is a suite of productivity applications including Word, Excel, PowerPoint, and Outlook.
 
@@ -42,7 +49,3 @@ Microsoft Office is a suite of productivity applications including Word, Excel, 
 - Keep apps updated
 - Use cloud backup
 - Avoid pirated versions
-
-## Metadata
-product: microsoft_office
-category: software

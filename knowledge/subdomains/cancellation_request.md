@@ -1,5 +1,14 @@
 # Cancellation Request
 
+## Metadata
+```json
+{
+  "domain": "administrative",
+  "subdomain": "cancellation_request",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Requests from customers to cancel subscriptions, orders, or services.
 
@@ -35,6 +44,3 @@ Requests from customers to cancel subscriptions, orders, or services.
 - Clearly explain refund implications
 - Avoid retention pressure
 
-## Metadata
-domain: administrative
-subdomain: cancellation_request

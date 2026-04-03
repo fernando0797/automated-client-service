@@ -1,5 +1,12 @@
 # Fitbit Charge
 
+## Metadata
+json
+{
+  "product": "fitbit_charge",
+  "type": "product"
+}
+
 ## Overview
 Fitbit Charge is a fitness tracker designed to monitor health metrics such as heart rate, steps, sleep, and activity levels.
 
@@ -45,7 +52,3 @@ Fitbit Charge is a fitness tracker designed to monitor health metrics such as he
 - Keep firmware updated
 - Clean device regularly
 - Charge before full depletion
-
-## Metadata
-product: fitbit_charge
-category: wearable

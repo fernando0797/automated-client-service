@@ -1,5 +1,12 @@
 # Microsoft Surface
 
+## Metadata
+json
+{
+  "product": "microsoft_surface",
+  "type": "product"
+}
+
 ## Overview
 Microsoft Surface is a line of hybrid devices combining laptop and tablet functionality, designed for productivity and portability.
 
@@ -45,7 +52,3 @@ Microsoft Surface is a line of hybrid devices combining laptop and tablet functi
 - Keep drivers updated
 - Avoid overheating
 - Use official accessories
-
-## Metadata
-product: microsoft_surface
-category: laptop

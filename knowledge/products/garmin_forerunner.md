@@ -1,5 +1,12 @@
 # Garmin Forerunner
 
+## Metadata
+json
+{
+  "product": "garmin_forerunner",
+  "type": "product"
+}
+
 ## Overview
 Garmin Forerunner is a GPS smartwatch designed for runners and athletes, offering advanced performance tracking and training metrics.
 
@@ -44,7 +51,3 @@ Garmin Forerunner is a GPS smartwatch designed for runners and athletes, offerin
 - Sync regularly
 - Update firmware
 - Use correct activity modes
-
-## Metadata
-product: garmin_forerunner
-category: wearable

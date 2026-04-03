@@ -1,5 +1,12 @@
 # Nintendo Switch
 
+## Metadata
+json
+{
+  "product": "nintendo_switch",
+  "type": "product"
+}
+
 ## Overview
 Nintendo Switch is a hybrid gaming console that can be used both as a handheld device and connected to a TV.
 
@@ -41,7 +48,3 @@ Nintendo Switch is a hybrid gaming console that can be used both as a handheld d
 - Keep system updated
 - Avoid physical damage
 - Store safely
-
-## Metadata
-product: nintendo_switch
-category: gaming_console

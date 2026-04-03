@@ -1,5 +1,12 @@
 # iPhone
 
+## Metadata
+json
+{
+  "product": "iphone",
+  "type": "product"
+}
+
 ## Overview
 iPhone is Apple’s smartphone line, known for its seamless ecosystem integration, performance, and user-friendly interface.
 
@@ -44,7 +51,3 @@ iPhone is Apple’s smartphone line, known for its seamless ecosystem integratio
 - Keep iOS updated
 - Manage storage regularly
 - Avoid extreme temperatures
-
-## Metadata
-product: iphone
-category: smartphone

@@ -1,5 +1,12 @@
 # GoPro Action Camera
 
+## Metadata
+json
+{
+  "product": "gopro_action_camera",
+  "type": "product"
+}
+
 ## Overview
 GoPro action cameras are rugged, compact cameras designed for capturing high-quality video and images in extreme environments such as sports, underwater, and outdoor activities.
 
@@ -46,7 +53,3 @@ GoPro action cameras are rugged, compact cameras designed for capturing high-qua
 - Use certified SD cards
 - Keep firmware updated
 - Avoid long recordings without breaks
-
-## Metadata
-product: gopro_action_camera
-category: camera

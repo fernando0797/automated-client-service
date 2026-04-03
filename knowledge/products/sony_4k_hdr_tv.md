@@ -1,5 +1,12 @@
 # Sony 4K HDR TV
 
+## Metadata
+json
+{
+  "product": "sony_4k_hdr_tv",
+  "type": "product"
+}
+
 ## Overview
 Sony 4K HDR TVs offer high-resolution displays with enhanced contrast and color through HDR technology, often powered by Android TV or Google TV.
 
@@ -44,7 +51,3 @@ Sony 4K HDR TVs offer high-resolution displays with enhanced contrast and color 
 - Keep firmware updated
 - Use high-quality HDMI cables
 - Avoid static images
-
-## Metadata
-product: sony_4k_hdr_tv
-category: television

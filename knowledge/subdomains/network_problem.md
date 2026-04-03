@@ -1,5 +1,15 @@
 # Network Problem
 
+## Metadata
+
+```json
+{
+  "domain": "technical_support",
+  "subdomain": "network_problem",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Issues related to connectivity problems, including inability to connect to the internet, unstable connections, or network interruptions.
 
@@ -36,7 +46,3 @@ Issues related to connectivity problems, including inability to connect to the i
 - Ask about scope (one device vs all devices)
 - Provide simple step-by-step fixes
 - Avoid technical jargon initially
-
-## Metadata
-domain: technical_support
-subdomain: network_problem

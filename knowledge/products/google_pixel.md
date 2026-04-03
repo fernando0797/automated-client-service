@@ -1,5 +1,12 @@
 # Google Pixel
 
+## Metadata
+json
+{
+  "product": "google_pixel",
+  "type": "product"
+}
+
 ## Overview
 Google Pixel is a line of smartphones developed by Google, known for clean Android experience and advanced camera capabilities.
 
@@ -44,7 +51,3 @@ Google Pixel is a line of smartphones developed by Google, known for clean Andro
 - Keep OS updated
 - Avoid extreme temperatures
 - Manage background apps
-
-## Metadata
-product: google_pixel
-category: smartphone

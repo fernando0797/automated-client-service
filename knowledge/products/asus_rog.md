@@ -1,5 +1,14 @@
 # ASUS ROG
 
+## Metadata
+
+```json
+{
+  "product": "asus_rog",
+  "type": "product"
+}
+```
+
 ## Overview
 ASUS ROG (Republic of Gamers) is a line of high-performance gaming laptops and hardware designed for intensive workloads and gaming.
 
@@ -46,7 +55,3 @@ ASUS ROG (Republic of Gamers) is a line of high-performance gaming laptops and h
 - Keep drivers updated
 - Maintain cooling system
 - Avoid prolonged overheating
-
-## Metadata
-product: asus_rog
-category: gaming_device

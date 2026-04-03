@@ -1,5 +1,14 @@
 # Bose QuietComfort
 
+
+## Metadata
+
+```json
+{
+  "product": "bose_quietcomfort",
+  "type": "product"
+}
+```
 ## Overview
 Bose QuietComfort is a premium line of wireless noise-cancelling headphones designed for high-quality audio and comfort, especially during travel and long listening sessions.
 
@@ -47,7 +56,3 @@ Bose QuietComfort is a premium line of wireless noise-cancelling headphones desi
 - Keep firmware updated
 - Store in case when not in use
 - Avoid moisture exposure
-
-## Metadata
-product: bose_quietcomfort
-category: audio_device

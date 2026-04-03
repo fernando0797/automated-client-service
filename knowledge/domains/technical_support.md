@@ -1,7 +1,12 @@
----
-domain: technical_support
-type: domain_doc
----
+# Technical Support
+
+## Metadata
+```json
+{
+  "domain": "technical_support",
+  "type": "domain"
+}
+```
 
 # Technical Support Guidelines
 

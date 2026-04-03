@@ -1,5 +1,14 @@
 # Amazon Echo
 
+## Metadata
+
+```json
+{
+  "product": "amazon_echo",
+  "type": "product"
+}
+```
+
 ## Overview
 Amazon Echo is a smart speaker powered by Alexa, enabling voice interaction, smart home control, and multimedia playback.
 
@@ -45,7 +54,3 @@ Amazon Echo is a smart speaker powered by Alexa, enabling voice interaction, sma
 - Place device in central location
 - Keep software updated
 - Use official Alexa app
-
-## Metadata
-product: amazon_echo
-category: smart_device

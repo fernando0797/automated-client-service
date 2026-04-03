@@ -1,5 +1,12 @@
 # Microsoft Xbox Controller
 
+## Metadata
+json
+{
+  "product": "microsoft_xbox_controller",
+  "type": "product"
+}
+
 ## Overview
 The Xbox Controller is a wireless gaming controller used with Xbox consoles and compatible devices such as PCs and mobile devices.
 
@@ -41,7 +48,3 @@ The Xbox Controller is a wireless gaming controller used with Xbox consoles and 
 - Keep firmware updated
 - Avoid dropping device
 - Use official accessories
-
-## Metadata
-product: microsoft_xbox_controller
-category: gaming_peripheral

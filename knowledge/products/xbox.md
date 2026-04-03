@@ -1,5 +1,12 @@
 # Xbox
 
+## Metadata
+json
+{
+  "product": "xbox",
+  "type": "product"
+}
+
 ## Overview
 Xbox is a gaming console platform developed by Microsoft, offering high-performance gaming and integration with online services.
 
@@ -40,7 +47,3 @@ Xbox is a gaming console platform developed by Microsoft, offering high-performa
 - Keep system updated
 - Maintain ventilation
 - Use official accessories
-
-## Metadata
-product: xbox
-category: gaming_console

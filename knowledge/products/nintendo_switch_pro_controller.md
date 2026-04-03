@@ -1,5 +1,12 @@
 # Nintendo Switch Pro Controller
 
+## Metadata
+json
+{
+  "product": "nintendo_switch_pro_controller",
+  "type": "product"
+}
+
 ## Overview
 The Nintendo Switch Pro Controller is a premium wireless controller designed for enhanced comfort and performance.
 
@@ -39,7 +46,3 @@ The Nintendo Switch Pro Controller is a premium wireless controller designed for
 - Keep firmware updated
 - Avoid drops
 - Store properly
-
-## Metadata
-product: nintendo_switch_pro_controller
-category: gaming_peripheral

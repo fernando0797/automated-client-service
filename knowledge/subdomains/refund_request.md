@@ -1,5 +1,15 @@
 # Refund Request
 
+## Metadata
+
+```json
+{
+  "domain": "administrative",
+  "subdomain": "refund_request",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Requests from customers to receive a refund for a product or service.
 
@@ -31,7 +41,3 @@ Requests from customers to receive a refund for a product or service.
 - Be transparent about policies
 - Show empathy
 - Avoid conflict
-
-## Metadata
-domain: administrative
-subdomain: refund_request

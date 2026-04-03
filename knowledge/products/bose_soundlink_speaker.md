@@ -1,5 +1,14 @@
 # Bose SoundLink Speaker
 
+## Metadata
+
+```json
+{
+  "product": "bose_soundlink_speaker",
+  "type": "product"
+}
+```
+
 ## Overview
 Bose SoundLink speakers are portable Bluetooth speakers known for high-quality audio, durability, and ease of use.
 
@@ -46,7 +55,3 @@ Bose SoundLink speakers are portable Bluetooth speakers known for high-quality a
 - Keep firmware updated
 - Avoid full battery depletion
 - Store in dry conditions
-
-## Metadata
-product: bose_soundlink_speaker
-category: audio_device

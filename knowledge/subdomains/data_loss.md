@@ -1,5 +1,14 @@
 # Data Loss
 
+## Metadata
+```json
+{
+  "domain": "technical_support",
+  "subdomain": "data_loss",
+  "type": "subdomain"
+}
+```
+
 ## Description
 Situations where users lose files, data, or progress due to system errors, accidental deletion, or failures.
 
@@ -36,7 +45,3 @@ Situations where users lose files, data, or progress due to system errors, accid
 - Act quickly and clearly
 - Avoid false guarantees of recovery
 - Prioritize recovery steps first
-
-## Metadata
-domain: technical_support
-subdomain: data_loss

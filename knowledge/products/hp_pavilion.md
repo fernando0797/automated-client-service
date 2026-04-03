@@ -1,5 +1,12 @@
 # HP Pavilion
 
+## Metadata
+json
+{
+  "product": "hp_pavilion",
+  "type": "product"
+}
+
 ## Overview
 HP Pavilion is a consumer-oriented laptop series designed for everyday computing, including work, multimedia, and light gaming.
 
@@ -46,7 +53,3 @@ HP Pavilion is a consumer-oriented laptop series designed for everyday computing
 - Keep drivers updated
 - Avoid overheating environments
 - Perform regular maintenance
-
-## Metadata
-product: hp_pavilion
-category: laptop

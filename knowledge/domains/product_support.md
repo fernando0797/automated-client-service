@@ -1,7 +1,12 @@
----
-domain: product_support
-type: domain_doc
----
+# Product Support
+
+## Metadata
+```json
+{
+  "domain": "product_support",
+  "type": "domain"
+}
+```
 
 # Product Support Guidelines
 

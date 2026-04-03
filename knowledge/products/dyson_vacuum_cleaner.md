@@ -1,5 +1,12 @@
 # Dyson Vacuum Cleaner
 
+## Metadata
+json
+{
+  "product": "dyson_vacuum_cleaner",
+  "type": "product"
+}
+
 ## Overview
 Dyson vacuum cleaners are high-performance cleaning devices, often cordless, known for strong suction power and advanced filtration systems.
 
@@ -45,7 +52,3 @@ Dyson vacuum cleaners are high-performance cleaning devices, often cordless, kno
 - Clean filters regularly
 - Avoid overfilling dust bin
 - Store properly after use
-
-## Metadata
-product: dyson_vacuum_cleaner
-category: home_appliance
