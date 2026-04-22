@@ -38,34 +38,38 @@ def retriever(chunks, embedder, vector_store):
 @pytest.fixture(scope="module")
 def good_ticket():
     return Ticket(
-        "I am having trouble with the initial setup of my Amazon Echo. "
-        "The setup wizard starts, but one of the required steps fails, "
-        "which means I cannot finish the configuration and begin using "
-        "the product normally. Please provide step-by-step guidance to "
-        "complete the setup. The issue is currently blocking normal use, "
-        "so I need an urgent solution.",
-        "2",
-        "database",
-        "product_support",
-        "product_setup",
-        "amazon_echo"
+        description=(
+            "I am having trouble with the initial setup of my Amazon Echo. "
+            "The setup wizard starts, but one of the required steps fails, "
+            "which means I cannot finish the configuration and begin using "
+            "the product normally. Please provide step-by-step guidance to "
+            "complete the setup. The issue is currently blocking normal use, "
+            "so I need an urgent solution."
+        ),
+        ticket_id="2",
+        source="database",
+        domain="product_support",
+        subdomain="product_setup",
+        product="amazon_echo",
     )
 
 
 @pytest.fixture(scope="module")
 def bad_ticket():
     return Ticket(
-        "I am having trouble with the initial setup of my GoPro Hero. "
-        "The setup wizard starts, but one of the required steps fails, "
-        "which means I cannot finish the configuration and begin using "
-        "the product normally. Please provide step-by-step guidance to "
-        "complete the setup. The issue is currently blocking normal use, "
-        "so I need an urgent solution.",
-        "2",
-        "database",
-        "null",
-        "null",
-        "null"
+        description=(
+            "I am having trouble with the initial setup of my GoPro Hero. "
+            "The setup wizard starts, but one of the required steps fails, "
+            "which means I cannot finish the configuration and begin using "
+            "the product normally. Please provide step-by-step guidance to "
+            "complete the setup. The issue is currently blocking normal use, "
+            "so I need an urgent solution."
+        ),
+        ticket_id="2",
+        source="database",
+        domain="null",
+        subdomain="null",
+        product="null",
     )
 
 

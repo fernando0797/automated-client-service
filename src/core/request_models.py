@@ -1,11 +1,10 @@
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 
-@dataclass
-class Ticket:
-    description: str
+class Ticket(BaseModel):
     ticket_id: str | None = None
     source: str | None = None
-    domain: str | None = None
-    subdomain: str | None = None
-    product: str | None = None
+    description: str
+    domain: str
+    subdomain: str
+    product: str
