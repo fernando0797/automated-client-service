@@ -23,3 +23,10 @@ class KnowledgeChunk:
     @property
     def type(self) -> str:
         return self.metadata["type"]
+
+
+@dataclass
+class RetrievalResult:
+    chunk: KnowledgeChunk
+    distance: float
+    source: str
