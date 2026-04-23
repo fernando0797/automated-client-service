@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pydantic import BaseModel
 from typing import Any, Dict
 
 
@@ -25,8 +26,7 @@ class KnowledgeChunk:
         return self.metadata["type"]
 
 
-@dataclass
-class RetrievalResult:
+class RetrievalResult(BaseModel):
     chunk: KnowledgeChunk
     distance: float
     source: str

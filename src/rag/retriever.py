@@ -29,7 +29,7 @@ class Retriever:
         for result in filtered_results:
             chunk_id = result.chunk.chunk_id
             total_results[chunk_id] = RetrievalResult(
-                result.chunk, result.distance, result.source)
+                chunk=result.chunk, distance=result.distance, source=result.source)
 
         for result in semantic_results:
             chunk_id = result.chunk.chunk_id
@@ -40,7 +40,7 @@ class Retriever:
                     total_results[chunk_id].distance, result.distance)
             else:
                 total_results[chunk_id] = RetrievalResult(
-                    result.chunk, result.distance, result.source)
+                    chunk=result.chunk, distance=result.distance, source=result.source)
 
         final_results = list(total_results.values())
         final_results.sort(key=lambda x: x.distance)
@@ -78,7 +78,7 @@ class Retriever:
         filtered_results = []
         for result in results:
             filtered_results.append(RetrievalResult(
-                result[0], result[1], "filter"))
+                chunk=result[0], distance=result[1], source="filter"))
 
         return filtered_results
 
@@ -98,7 +98,7 @@ class Retriever:
         semantic_results = []
         for result in results:
             semantic_results.append(RetrievalResult(
-                result[0], result[1], "semantic"))
+                chunk=result[0], distance=result[1], source="semantic"))
 
         return semantic_results
 
