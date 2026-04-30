@@ -14,6 +14,7 @@ def valid_ticket():
     return Ticket(
         description="I need help setting up my Amazon Echo.",
         ticket_id="2",
+        turn_id="turn_001",
         source="database",
         domain="product_support",
         subdomain="product_setup",
@@ -62,3 +63,43 @@ def test_validate_raises_error_for_inconsistent_domain_and_subdomain(
 
     with pytest.raises(ValueError, match="is not valid for domain"):
         validator.validate(invalid_ticket)
+
+
+def test_validate_raises_error_for_empty_description(validator, valid_ticket):
+    invalid_ticket = valid_ticket.model_copy(update={"description": "   "})
+
+    with pytest.raises(ValueError, match="Invalid description"):
+        validator.validate(invalid_ticket)
+
+
+def test_validate_raises_error_for_empty_ticket_id_when_present(
+    validator,
+    valid_ticket,
+):
+    invalid_ticket = valid_ticket.model_copy(update={"ticket_id": "   "})
+
+    with pytest.raises(ValueError, match="Invalid ticket_id"):
+        validator.validate(invalid_ticket)
+
+
+def test_validate_raises_error_for_empty_turn_id_when_present(
+    validator,
+    valid_ticket,
+):
+    invalid_ticket = valid_ticket.model_copy(update={"turn_id": "   "})
+
+    with pytest.raises(ValueError, match="Invalid turn_id"):
+        validator.validate(invalid_ticket)
+
+
+def test_validate_accepts_ticket_without_optional_ids(validator, valid_ticket):
+    ticket = valid_ticket.model_copy(
+        update={
+            "ticket_id": None,
+            "turn_id": None,
+        }
+    )
+
+    result = validator.validate(ticket)
+
+    assert result == ticket

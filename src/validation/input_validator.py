@@ -20,6 +20,14 @@ class InputValidator:
         }
 
     def validate(self, ticket: Ticket) -> Ticket:
+        self._validate_non_empty_text(ticket.description, "description")
+
+        if ticket.ticket_id is not None:
+            self._validate_non_empty_text(ticket.ticket_id, "ticket_id")
+
+        if ticket.turn_id is not None:
+            self._validate_non_empty_text(ticket.turn_id, "turn_id")
+
         self._validate_domain(ticket.domain)
         self._validate_product(ticket.product)
         self._validate_subdomain(ticket.subdomain)
@@ -48,6 +56,10 @@ class InputValidator:
         file_path = self.taxonomies_path / filename
         with file_path.open("r", encoding="utf-8") as f:
             return json.load(f)
+
+    def _validate_non_empty_text(self, value: str, field_name: str) -> None:
+        if not value.strip():
+            raise ValueError(f"Invalid {field_name}: cannot be empty")
 
     def _validate_domain(self, domain: str) -> None:
         if domain not in self.valid_domains:
