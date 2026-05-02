@@ -11,7 +11,7 @@ RetrievalDecisionType = Literal[
     "closing",
     "clarification",
     "follow_up",
-    "new_issue",
+    "problem_update",
     "metadata_only",
     "description_only",
     "metadata_and_description",

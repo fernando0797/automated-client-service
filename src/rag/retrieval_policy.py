@@ -33,25 +33,127 @@ class RetrievalPolicy:
         self.min_rich_description_chars = min_rich_description_chars
 
         self.closing_phrases = {
+            # English: thanks
             "thanks",
             "thank you",
+            "thanks a lot",
+            "thank you very much",
+            "many thanks",
+            "thx",
+            "ty",
+            "appreciate it",
+            "much appreciated",
+
+            # English: confirmation / resolved
             "ok",
             "okay",
+            "alright",
+            "all right",
+            "got it",
+            "understood",
+            "clear",
+            "makes sense",
+            "done",
+            "fixed",
+            "solved",
+            "resolved",
+            "it works",
+            "works now",
+            "that works",
+            "that worked",
+            "that solved it",
+            "that fixed it",
+            "issue solved",
+            "problem solved",
+            "everything works",
+            "everything is working",
+            "no problem",
+            "no problems",
+            "no more issues",
+
+            # English: positive closing
             "perfect",
             "great",
             "nice",
-            "done",
+            "excellent",
+            "awesome",
+            "cool",
+            "good",
+            "very good",
+            "great thanks",
+            "perfect thanks",
+            "okay thanks",
+            "ok thanks",
+            "thanks done",
+            "all good",
+            "all set",
+            "that's all",
+            "nothing else",
+            "no further questions",
+            "bye",
+            "goodbye",
+            "see you",
+            "have a nice day",
+
+            # Spanish: gracias
             "gracias",
+            "muchas gracias",
+            "mil gracias",
+            "gracias por la ayuda",
+            "te lo agradezco",
+            "se agradece",
+            "muy amable",
+
+            # Spanish: confirmación / resuelto
             "vale",
             "ok gracias",
+            "vale gracias",
+            "de acuerdo",
+            "entendido",
+            "comprendido",
+            "claro",
             "perfecto",
             "genial",
-            "de acuerdo",
+            "bien",
+            "muy bien",
+            "hecho",
+            "listo",
+            "arreglado",
+            "solucionado",
+            "resuelto",
+            "funciona",
+            "ya funciona",
+            "ahora funciona",
+            "me funciona",
+            "funciona bien",
+            "todo bien",
+            "todo correcto",
+            "todo perfecto",
+            "todo solucionado",
+            "problema resuelto",
+            "problema solucionado",
+            "incidencia resuelta",
+            "incidencia solucionada",
+            "sin problema",
+            "sin problemas",
+            "no tengo más dudas",
+            "no tengo mas dudas",
+            "nada más",
+            "nada mas",
+            "eso es todo",
+
+            # Spanish: despedida
+            "adiós",
+            "adios",
+            "hasta luego",
+            "nos vemos",
+            "buen día",
+            "buen dia",
+            "que tengas buen día",
+            "que tengas buen dia",
         }
 
         self.clarification_patterns = {
-            "explain",
-            "explain it",
             "explain it again",
             "explain it more simply",
             "what do you mean",
@@ -120,10 +222,8 @@ class RetrievalPolicy:
             "hot",
             "warm",
             "refund",
-            "return",
             "cancel",
             "warranty",
-            "late",
             "delayed",
             "damaged",
             "can't login",
@@ -134,7 +234,6 @@ class RetrievalPolicy:
             "fallo",
             "falla",
             "fallando",
-            "error",
             "no funciona",
             "roto",
             "rota",
@@ -174,7 +273,6 @@ class RetrievalPolicy:
         has_problem_signal = self._has_problem_signal(description)
 
         is_initial_turn = self._is_initial_turn(ticket.turn_id)
-        is_later_turn = not is_initial_turn
 
         is_closing = self._is_closing_turn(description)
         is_clarification = self._is_clarification_turn(description)
@@ -189,27 +287,19 @@ class RetrievalPolicy:
                 reason="The user turn is a pure closing or acknowledgement message.",
             )
 
-        if is_clarification:
-            return RetrievalPolicyDecision(
-                use_rag=False,
-                use_memory=has_memory,
-                retrieval_mode="none",
-                decision_type="clarification",
-                reason="The user is asking for clarification or reformulation of previous context.",
-            )
-
-        if is_later_turn:
-            return self._decide_later_turn(
+        if is_initial_turn:
+            return self._decide_initial_turn(
                 has_memory=has_memory,
+                has_metadata=has_metadata,
                 has_rich_description=has_rich_description,
-                has_problem_signal=has_problem_signal,
-                is_follow_up=is_follow_up,
             )
 
-        return self._decide_initial_turn(
+        return self._decide_later_turn(
             has_memory=has_memory,
-            has_metadata=has_metadata,
             has_rich_description=has_rich_description,
+            has_problem_signal=has_problem_signal,
+            is_follow_up=is_follow_up,
+            is_clarification=is_clarification
         )
 
     def _decide_initial_turn(
@@ -266,6 +356,7 @@ class RetrievalPolicy:
         has_rich_description: bool,
         has_problem_signal: bool,
         is_follow_up: bool,
+        is_clarification: bool
     ) -> RetrievalPolicyDecision:
         """
         Decide retrieval behavior for later conversational turns.
@@ -291,8 +382,17 @@ class RetrievalPolicy:
                 use_rag=True,
                 use_memory=has_memory,
                 retrieval_mode="semantic",
-                decision_type="new_issue",
+                decision_type="problem_update",
                 reason="Later turn adds new problem-related information. Semantic retrieval is used to avoid stale metadata filtering.",
+            )
+
+        if is_clarification:
+            return RetrievalPolicyDecision(
+                use_rag=False,
+                use_memory=has_memory,
+                retrieval_mode="none",
+                decision_type="clarification",
+                reason="The user is asking for clarification or reformulation of previous context.",
             )
 
         if has_rich_description:

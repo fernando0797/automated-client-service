@@ -191,6 +191,21 @@ def test_policy_decision_accepts_valid_values() -> None:
     assert decision.reason == "Validated metadata and rich description are available."
 
 
+def test_policy_decision_accepts_problem_update_decision_type() -> None:
+    decision = RetrievalPolicyDecision(
+        use_rag=True,
+        use_memory=True,
+        retrieval_mode="semantic",
+        decision_type="problem_update",
+        reason="Later turn adds new problem-related information.",
+    )
+
+    assert decision.use_rag is True
+    assert decision.use_memory is True
+    assert decision.retrieval_mode == "semantic"
+    assert decision.decision_type == "problem_update"
+
+
 def test_policy_decision_rejects_invalid_retrieval_mode() -> None:
     with pytest.raises(ValidationError):
         RetrievalPolicyDecision(
@@ -208,8 +223,8 @@ def test_policy_decision_rejects_invalid_decision_type() -> None:
             use_rag=True,
             use_memory=False,
             retrieval_mode="hybrid",
-            decision_type="invalid",
-            reason="Invalid decision type.",
+            decision_type="new_issue",
+            reason="Invalid decision type because new_issue is no longer supported.",
         )
 
 
@@ -461,10 +476,9 @@ def test_has_valid_metadata_does_not_validate_taxonomy_values(
         "battery drains",
         "overheats",
         "refund",
-        "return",
         "cancel",
         "warranty",
-        "late delivery",
+        "delayed package",
         "damaged product",
         "can't login",
         "not charging",
@@ -478,6 +492,7 @@ def test_has_valid_metadata_does_not_validate_taxonomy_values(
         "batería",
         "descarga",
         "devolver",
+        "devolución",
         "reembolso",
         "garantía",
         "no carga",
@@ -762,7 +777,7 @@ def test_later_short_follow_up_without_memory_is_follow_up_but_uses_no_memory(
     assert decision.decision_type == "follow_up"
 
 
-def test_later_follow_up_with_rich_problem_uses_semantic(
+def test_later_follow_up_with_rich_problem_uses_semantic_problem_update(
     policy: RetrievalPolicy,
 ) -> None:
     policy_input = make_policy_input(
@@ -776,7 +791,7 @@ def test_later_follow_up_with_rich_problem_uses_semantic(
     assert decision.use_rag is True
     assert decision.use_memory is True
     assert decision.retrieval_mode == "semantic"
-    assert decision.decision_type == "new_issue"
+    assert decision.decision_type == "problem_update"
 
 
 def test_later_short_generic_problem_with_memory_uses_memory_only(
@@ -878,6 +893,46 @@ def test_initial_turn_with_metadata_and_poor_description_uses_filter(
     assert decision.decision_type == "metadata_only"
 
 
+def test_initial_turn_without_metadata_and_rich_description_uses_semantic(
+    policy: RetrievalPolicy,
+) -> None:
+    policy_input = make_policy_input(
+        description="my iphone battery drains very quickly after the latest update",
+        turn_id="001",
+        memory_context=None,
+        domain="",
+        subdomain="",
+        product="",
+    )
+
+    decision = policy.decide(policy_input)
+
+    assert decision.use_rag is True
+    assert decision.use_memory is False
+    assert decision.retrieval_mode == "semantic"
+    assert decision.decision_type == "description_only"
+
+
+def test_initial_turn_without_metadata_and_poor_description_is_insufficient(
+    policy: RetrievalPolicy,
+) -> None:
+    policy_input = make_policy_input(
+        description="help",
+        turn_id="001",
+        memory_context=None,
+        domain="",
+        subdomain="",
+        product="",
+    )
+
+    decision = policy.decide(policy_input)
+
+    assert decision.use_rag is False
+    assert decision.use_memory is False
+    assert decision.retrieval_mode == "none"
+    assert decision.decision_type == "insufficient_information"
+
+
 def test_missing_turn_id_is_treated_as_initial_turn(
     policy: RetrievalPolicy,
 ) -> None:
@@ -941,7 +996,7 @@ def test_later_turn_with_new_product_in_description_uses_semantic_not_hybrid(
     assert decision.retrieval_mode == "semantic"
     assert decision.retrieval_mode != "hybrid"
     assert decision.retrieval_mode != "filter"
-    assert decision.decision_type == "new_issue"
+    assert decision.decision_type == "problem_update"
 
 
 def test_later_turn_with_new_product_and_no_memory_still_uses_semantic(
@@ -961,7 +1016,7 @@ def test_later_turn_with_new_product_and_no_memory_still_uses_semantic(
     assert decision.use_rag is True
     assert decision.use_memory is False
     assert decision.retrieval_mode == "semantic"
-    assert decision.decision_type == "new_issue"
+    assert decision.decision_type == "problem_update"
 
 
 def test_later_turn_with_rich_non_problem_description_uses_semantic_description_only(
@@ -1038,7 +1093,7 @@ def test_later_rich_problem_never_uses_filter_or_hybrid(
     turn_id: str,
 ) -> None:
     policy_input = make_policy_input(
-        description="my macbook screen stays black after the last system update",
+        description="my macbook is not working after the last system update",
         turn_id=turn_id,
         memory_context="Previous issue was about iPhone battery.",
         domain="technical_support",
@@ -1051,6 +1106,45 @@ def test_later_rich_problem_never_uses_filter_or_hybrid(
     assert decision.use_rag is True
     assert decision.retrieval_mode == "semantic"
     assert decision.retrieval_mode not in {"filter", "hybrid"}
+    assert decision.decision_type == "problem_update"
+
+
+def test_later_problem_update_has_priority_over_stale_metadata(
+    policy: RetrievalPolicy,
+) -> None:
+    policy_input = make_policy_input(
+        description="now my playstation crashes every time i open a game",
+        turn_id="003",
+        memory_context="Previous issue was about iPhone battery drain.",
+        domain="technical_support",
+        subdomain="battery_life",
+        product="iphone",
+    )
+
+    decision = policy.decide(policy_input)
+
+    assert decision.use_rag is True
+    assert decision.use_memory is True
+    assert decision.retrieval_mode == "semantic"
+    assert decision.decision_type == "problem_update"
+
+
+def test_later_problematic_message_containing_closing_phrase_is_not_closing(
+    policy: RetrievalPolicy,
+) -> None:
+    policy_input = make_policy_input(
+        description="thanks but it still fails after restarting",
+        turn_id="002",
+        memory_context="Previous issue was about iPhone battery drain.",
+    )
+
+    decision = policy.decide(policy_input)
+
+    assert decision.decision_type != "closing"
+    assert decision.use_rag is True
+    assert decision.use_memory is True
+    assert decision.retrieval_mode == "semantic"
+    assert decision.decision_type == "problem_update"
 
 
 # =============================================================================
@@ -1107,7 +1201,7 @@ def test_decide_always_returns_valid_decision(
         "closing",
         "clarification",
         "follow_up",
-        "new_issue",
+        "problem_update",
         "metadata_only",
         "description_only",
         "metadata_and_description",
@@ -1195,7 +1289,7 @@ def test_later_turns_that_retrieve_always_use_semantic(
             memory_context="ctx",
         ),
         make_policy_input(
-            description="i want to return the xbox because it arrived damaged",
+            description="i want to cancel the xbox order because it arrived damaged",
             turn_id="004",
             memory_context=None,
         ),
@@ -1231,7 +1325,7 @@ def test_reason_mentions_hybrid_for_initial_hybrid_case(
     assert "hybrid" in decision.reason.lower()
 
 
-def test_reason_mentions_semantic_for_later_new_issue(
+def test_reason_mentions_semantic_for_later_problem_update(
     policy: RetrievalPolicy,
 ) -> None:
     policy_input = make_policy_input(
@@ -1242,6 +1336,7 @@ def test_reason_mentions_semantic_for_later_new_issue(
 
     decision = policy.decide(policy_input)
 
+    assert decision.decision_type == "problem_update"
     assert "semantic" in decision.reason.lower()
 
 
@@ -1371,7 +1466,7 @@ def test_integration_valid_later_ticket_with_stale_metadata_uses_semantic(
     assert decision.use_memory is True
     assert decision.retrieval_mode == "semantic"
     assert decision.retrieval_mode not in {"filter", "hybrid"}
-    assert decision.decision_type == "new_issue"
+    assert decision.decision_type == "problem_update"
 
 
 def test_integration_valid_later_closing_ticket_uses_no_rag(
@@ -1569,4 +1664,4 @@ def test_integration_later_turn_new_product_does_not_trust_initial_product_metad
     assert decision.use_memory is True
     assert decision.retrieval_mode == "semantic"
     assert decision.retrieval_mode not in {"filter", "hybrid"}
-    assert decision.decision_type == "new_issue"
+    assert decision.decision_type == "problem_update"
