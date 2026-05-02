@@ -49,6 +49,9 @@ class ContextBuilder:
             if section_text:
                 parts.append(section_text)
 
+        if parts == ["RETRIEVED CONTEXT"]:
+            return ""
+
         return "\n\n".join(parts)
 
     def _build_text_section(self, section_list: List[str], section_type: str) -> str:
