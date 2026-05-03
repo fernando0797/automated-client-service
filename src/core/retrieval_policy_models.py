@@ -27,6 +27,7 @@ class RetrievalPolicyInput(BaseModel):
 class RetrievalPolicyDecision(BaseModel):
     use_rag: bool
     use_memory: bool
+    is_initial_turn: bool
     retrieval_mode: RetrievalMode
     decision_type: RetrievalDecisionType
     reason: str = Field(..., min_length=1)

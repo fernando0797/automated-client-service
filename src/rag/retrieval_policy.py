@@ -282,6 +282,7 @@ class RetrievalPolicy:
             return RetrievalPolicyDecision(
                 use_rag=False,
                 use_memory=False,
+                is_initial_turn=is_initial_turn,
                 retrieval_mode="none",
                 decision_type="closing",
                 reason="The user turn is a pure closing or acknowledgement message.",
@@ -319,6 +320,7 @@ class RetrievalPolicy:
             return RetrievalPolicyDecision(
                 use_rag=True,
                 use_memory=has_memory,
+                is_initial_turn=True,
                 retrieval_mode="hybrid",
                 decision_type="metadata_and_description",
                 reason="Initial turn with validated metadata and rich description. Hybrid retrieval is appropriate.",
@@ -328,6 +330,7 @@ class RetrievalPolicy:
             return RetrievalPolicyDecision(
                 use_rag=True,
                 use_memory=has_memory,
+                is_initial_turn=True,
                 retrieval_mode="filter",
                 decision_type="metadata_only",
                 reason="Initial turn with validated metadata but insufficient description for semantic retrieval.",
@@ -337,6 +340,7 @@ class RetrievalPolicy:
             return RetrievalPolicyDecision(
                 use_rag=True,
                 use_memory=has_memory,
+                is_initial_turn=True,
                 retrieval_mode="semantic",
                 decision_type="description_only",
                 reason="Initial turn with rich description but missing metadata. Semantic retrieval is appropriate.",
@@ -345,6 +349,7 @@ class RetrievalPolicy:
         return RetrievalPolicyDecision(
             use_rag=False,
             use_memory=has_memory,
+            is_initial_turn=True,
             retrieval_mode="none",
             decision_type="insufficient_information",
             reason="Initial turn without enough metadata or descriptive information to justify retrieval.",
@@ -372,6 +377,7 @@ class RetrievalPolicy:
             return RetrievalPolicyDecision(
                 use_rag=False,
                 use_memory=has_memory,
+                is_initial_turn=False,
                 retrieval_mode="none",
                 decision_type="follow_up",
                 reason="Later turn appears to continue the previous conversation without adding enough new information for retrieval.",
@@ -381,6 +387,7 @@ class RetrievalPolicy:
             return RetrievalPolicyDecision(
                 use_rag=True,
                 use_memory=has_memory,
+                is_initial_turn=False,
                 retrieval_mode="semantic",
                 decision_type="problem_update",
                 reason="Later turn adds new problem-related information. Semantic retrieval is used to avoid stale metadata filtering.",
@@ -390,6 +397,7 @@ class RetrievalPolicy:
             return RetrievalPolicyDecision(
                 use_rag=False,
                 use_memory=has_memory,
+                is_initial_turn=False,
                 retrieval_mode="none",
                 decision_type="clarification",
                 reason="The user is asking for clarification or reformulation of previous context.",
@@ -399,6 +407,7 @@ class RetrievalPolicy:
             return RetrievalPolicyDecision(
                 use_rag=True,
                 use_memory=has_memory,
+                is_initial_turn=False,
                 retrieval_mode="semantic",
                 decision_type="description_only",
                 reason="Later turn contains a rich description. Semantic retrieval is safer because ticket metadata may refer to the initial issue.",
@@ -408,6 +417,7 @@ class RetrievalPolicy:
             return RetrievalPolicyDecision(
                 use_rag=False,
                 use_memory=True,
+                is_initial_turn=False,
                 retrieval_mode="none",
                 decision_type="follow_up",
                 reason="Later turn contains a problem signal but not enough standalone description for reliable semantic retrieval. Memory should be used.",
@@ -416,6 +426,7 @@ class RetrievalPolicy:
         return RetrievalPolicyDecision(
             use_rag=False,
             use_memory=has_memory,
+            is_initial_turn=False,
             retrieval_mode="none",
             decision_type="insufficient_information",
             reason="Later turn does not contain enough new standalone information to justify retrieval.",

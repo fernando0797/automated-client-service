@@ -179,6 +179,7 @@ def test_policy_decision_accepts_valid_values() -> None:
     decision = RetrievalPolicyDecision(
         use_rag=True,
         use_memory=False,
+        is_initial_turn=True,
         retrieval_mode="hybrid",
         decision_type="metadata_and_description",
         reason="Validated metadata and rich description are available.",
@@ -186,6 +187,7 @@ def test_policy_decision_accepts_valid_values() -> None:
 
     assert decision.use_rag is True
     assert decision.use_memory is False
+    assert decision.is_initial_turn is True
     assert decision.retrieval_mode == "hybrid"
     assert decision.decision_type == "metadata_and_description"
     assert decision.reason == "Validated metadata and rich description are available."
@@ -195,6 +197,7 @@ def test_policy_decision_accepts_problem_update_decision_type() -> None:
     decision = RetrievalPolicyDecision(
         use_rag=True,
         use_memory=True,
+        is_initial_turn=False,
         retrieval_mode="semantic",
         decision_type="problem_update",
         reason="Later turn adds new problem-related information.",
@@ -202,6 +205,7 @@ def test_policy_decision_accepts_problem_update_decision_type() -> None:
 
     assert decision.use_rag is True
     assert decision.use_memory is True
+    assert decision.is_initial_turn is False
     assert decision.retrieval_mode == "semantic"
     assert decision.decision_type == "problem_update"
 
