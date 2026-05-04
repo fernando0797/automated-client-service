@@ -13,7 +13,8 @@ class MemoryAgent:
         )
 
         self.structured_llm = self.llm.with_structured_output(
-            ConversationMemory)
+            ConversationMemory
+        )
 
     def update_memory(self, memory_update_input: MemoryUpdateInput) -> ConversationMemory:
         messages = self._build_messages(memory_update_input)
@@ -21,16 +22,17 @@ class MemoryAgent:
         return result
 
     def _build_messages(self, memory_update_input: MemoryUpdateInput) -> list[BaseMessage]:
-        ticket_description = memory_update_input.ticket.description
-        context = memory_update_input.summary.context
-        problem = memory_update_input.summary.problem
+        ticket_description = memory_update_input.ticket.description.strip()
+        summary = memory_update_input.summary
+
         previous_memory = (
-            memory_update_input.previous_memory.memory
+            memory_update_input.previous_memory.memory.strip()
             if memory_update_input.previous_memory
             and memory_update_input.previous_memory.memory.strip()
             else None
         )
-        response = memory_update_input.response.response
+
+        response = memory_update_input.response.response.strip()
         response_type = memory_update_input.response.resolution_type
 
         system_prompt = """
@@ -42,10 +44,15 @@ There may or may not be previous conversation memory:
 - If previous memory is provided, update it with the current turn.
 - If previous memory is not provided, create the first memory from the current turn.
 
+There may or may not be a structured summary:
+- If a structured summary is provided, use it as a compact interpretation of the current turn.
+- If no structured summary is provided, use the current user message and assistant response directly.
+
 The memory will be injected into the next turn, so it must help the system continue the conversation without losing context.
 
 Rules:
 - Keep the active user problem clear.
+- Keep the memory under 1200 characters.
 - Preserve useful previous information when previous memory exists.
 - If the current turn contradicts previous memory, prioritize the current turn.
 - Capture relevant user-confirmed facts.
@@ -54,7 +61,7 @@ Rules:
 - Include unresolved issues or pending next steps when relevant.
 - Do not answer the customer.
 - Do not generate new troubleshooting steps.
-- Do not mention internal pipeline details, agents, prompts, tools, RAG, retrieval, chunks, or system decisions.
+- Do not mention internal pipeline details, agents, prompts, tools, RAG, retrieval, chunks, summaries, or system decisions.
 - Do not store generic support knowledge unless it was part of the assistant response and is useful for continuity.
 - Remove unnecessary repetition.
 - Remove outdated details when the current turn makes them irrelevant.
@@ -64,26 +71,73 @@ Rules:
 Return only the conversation memory.
 """.strip()
 
+        human_prompt = self._build_human_prompt(
+            ticket_description=ticket_description,
+            previous_memory=previous_memory,
+            summary=summary,
+            response=response,
+            response_type=response_type,
+        )
+
+        return [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=human_prompt),
+        ]
+
+    def _build_human_prompt(
+        self,
+        ticket_description: str,
+        previous_memory: str | None,
+        summary,
+        response: str,
+        response_type: str,
+    ) -> str:
+        sections: list[str] = []
+
         if previous_memory:
-            human_prompt = f"""
+            sections.append(
+                f"""
 PREVIOUS CONVERSATION MEMORY:
 {previous_memory}
+""".strip()
+            )
 
+        sections.append(
+            f"""
 CURRENT USER MESSAGE:
 {ticket_description}
+""".strip()
+        )
 
-CURRENT PROBLEM:
-{problem}
+        if summary is not None:
+            sections.append(
+                f"""
+CURRENT STRUCTURED SUMMARY:
 
-CURRENT CONTEXT:
-{context}
+Problem:
+{summary.problem}
 
+Context:
+{summary.context}
+
+Intent:
+{summary.intent}
+""".strip()
+            )
+
+        sections.append(
+            f"""
 ASSISTANT RESPONSE:
 {response}
 
 RESPONSE TYPE:
 {response_type}
+""".strip()
+        )
 
+        if previous_memory:
+            sections.append(
+                """
 TASK:
 Update the previous conversation memory using the current turn.
 
@@ -92,30 +146,15 @@ The updated memory should preserve still-relevant information from the previous 
 Do not copy the previous memory verbatim if it can be improved, shortened, or updated.
 Do not include anything that is no longer relevant.
 """.strip()
+            )
         else:
-            human_prompt = f"""
-CURRENT USER MESSAGE:
-{ticket_description}
-
-CURRENT PROBLEM:
-{problem}
-
-CURRENT CONTEXT:
-{context}
-
-ASSISTANT RESPONSE:
-{response}
-
-RESPONSE TYPE:
-{response_type}
-
+            sections.append(
+                """
 TASK:
 Create the first conversation memory from this turn.
 
 The memory should capture the active issue, relevant user-confirmed facts, assistant suggestions, and unresolved state if applicable.
 """.strip()
+            )
 
-        return [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=human_prompt),
-        ]
+        return "\n\n".join(sections)

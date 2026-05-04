@@ -4,12 +4,20 @@ import os
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
 
 from src.agents.memory_agent import MemoryAgent
-from src.core.memory_models import ConversationMemory, MemoryUpdateInput
+from src.core.memory_models import (
+    ConversationMemory,
+    LoadedMemory,
+    MemoryUpdateInput,
+)
 from src.core.request_models import Ticket
 from src.core.summary_models import SummaryOutput
 from src.core.response_models import ResponseOutput
+
+
+USE_DEFAULT_SUMMARY = object()
 
 
 def make_memory_agent_without_llm() -> MemoryAgent:
@@ -70,13 +78,18 @@ def make_response(
 def make_memory_update_input(
     previous_memory: ConversationMemory | None = None,
     ticket: Ticket | None = None,
-    summary: SummaryOutput | None = None,
+    summary: SummaryOutput | None | object = USE_DEFAULT_SUMMARY,
     response: ResponseOutput | None = None,
 ) -> MemoryUpdateInput:
+    if summary is USE_DEFAULT_SUMMARY:
+        summary_value = make_summary()
+    else:
+        summary_value = summary
+
     return MemoryUpdateInput(
         ticket=ticket or make_ticket(),
         previous_memory=previous_memory,
-        summary=summary or make_summary(),
+        summary=summary_value,
         response=response or make_response(),
     )
 
@@ -90,6 +103,137 @@ def memory_agent() -> MemoryAgent:
 
 def extract_message_contents(messages):
     return [message.content for message in messages]
+
+
+# ---------------------------------------------------------------------
+# Model tests
+# ---------------------------------------------------------------------
+
+
+def test_conversation_memory_can_be_created():
+    memory = ConversationMemory(
+        memory="The user has an unresolved iPhone battery drain issue."
+    )
+
+    assert memory.memory == "The user has an unresolved iPhone battery drain issue."
+
+
+def test_conversation_memory_rejects_empty_memory():
+    with pytest.raises(ValidationError):
+        ConversationMemory(memory="")
+
+
+def test_conversation_memory_rejects_too_long_memory():
+    with pytest.raises(ValidationError):
+        ConversationMemory(memory="x" * 1201)
+
+
+def test_conversation_memory_accepts_max_length_memory():
+    memory = ConversationMemory(memory="x" * 1200)
+
+    assert len(memory.memory) == 1200
+
+
+def test_loaded_memory_can_represent_existing_memory():
+    memory = ConversationMemory(memory="Existing memory for the ticket.")
+
+    loaded_memory = LoadedMemory(
+        has_memory=True,
+        memory=memory,
+    )
+
+    assert loaded_memory.has_memory is True
+    assert loaded_memory.memory == memory
+
+
+def test_loaded_memory_can_represent_missing_memory():
+    loaded_memory = LoadedMemory(
+        has_memory=False,
+        memory=None,
+    )
+
+    assert loaded_memory.has_memory is False
+    assert loaded_memory.memory is None
+
+
+def test_memory_update_input_can_be_created():
+    ticket = make_ticket()
+    previous_memory = ConversationMemory(
+        memory="The user previously reported an iPhone battery issue."
+    )
+    summary = make_summary()
+    response = make_response()
+
+    memory_update_input = MemoryUpdateInput(
+        ticket=ticket,
+        previous_memory=previous_memory,
+        summary=summary,
+        response=response,
+    )
+
+    assert memory_update_input.ticket == ticket
+    assert memory_update_input.previous_memory == previous_memory
+    assert memory_update_input.summary == summary
+    assert memory_update_input.response == response
+
+
+def test_memory_update_input_accepts_missing_previous_memory():
+    memory_update_input = MemoryUpdateInput(
+        ticket=make_ticket(),
+        previous_memory=None,
+        summary=make_summary(),
+        response=make_response(),
+    )
+
+    assert memory_update_input.previous_memory is None
+
+
+def test_memory_update_input_accepts_missing_summary():
+    memory_update_input = MemoryUpdateInput(
+        ticket=make_ticket(),
+        previous_memory=None,
+        summary=None,
+        response=make_response(),
+    )
+
+    assert memory_update_input.summary is None
+
+
+def test_memory_update_input_defaults_previous_memory_to_none():
+    memory_update_input = MemoryUpdateInput(
+        ticket=make_ticket(),
+        summary=make_summary(),
+        response=make_response(),
+    )
+
+    assert memory_update_input.previous_memory is None
+
+
+def test_memory_update_input_defaults_summary_to_none():
+    memory_update_input = MemoryUpdateInput(
+        ticket=make_ticket(),
+        response=make_response(),
+    )
+
+    assert memory_update_input.summary is None
+
+
+def test_memory_update_input_requires_ticket():
+    with pytest.raises(ValidationError):
+        MemoryUpdateInput(
+            previous_memory=None,
+            summary=make_summary(),
+            response=make_response(),
+        )
+
+
+def test_memory_update_input_requires_response():
+    with pytest.raises(ValidationError):
+        MemoryUpdateInput(
+            ticket=make_ticket(),
+            previous_memory=None,
+            summary=make_summary(),
+        )
 
 
 # ---------------------------------------------------------------------
@@ -113,12 +257,14 @@ def test_memory_agent_returns_conversation_memory(memory_agent: MemoryAgent):
     assert isinstance(result, ConversationMemory)
     assert result == expected_memory
     assert result.memory
+    assert len(result.memory) <= 1200
     memory_agent.structured_llm.invoke.assert_called_once()
 
 
 def test_memory_agent_returns_result_from_structured_llm(memory_agent: MemoryAgent):
     expected_memory = ConversationMemory(
-        memory="Updated memory for this support case.")
+        memory="Updated memory for this support case."
+    )
     memory_agent.structured_llm.invoke.return_value = expected_memory
 
     result = memory_agent.update_memory(make_memory_update_input())
@@ -128,7 +274,8 @@ def test_memory_agent_returns_result_from_structured_llm(memory_agent: MemoryAge
 
 def test_memory_agent_invokes_structured_llm_with_messages(memory_agent: MemoryAgent):
     expected_memory = ConversationMemory(
-        memory="Memory generated by mocked LLM.")
+        memory="Memory generated by mocked LLM."
+    )
     memory_agent.structured_llm.invoke.return_value = expected_memory
 
     memory_agent.update_memory(make_memory_update_input())
@@ -140,6 +287,25 @@ def test_memory_agent_invokes_structured_llm_with_messages(memory_agent: MemoryA
     assert len(messages) == 2
     assert messages[0].type == "system"
     assert messages[1].type == "human"
+
+
+def test_memory_agent_works_without_summary(memory_agent: MemoryAgent):
+    expected_memory = ConversationMemory(
+        memory=(
+            "The user reports iPhone battery drain after an update. "
+            "The assistant suggested checking battery health and reducing background activity."
+        )
+    )
+
+    memory_agent.structured_llm.invoke.return_value = expected_memory
+
+    result = memory_agent.update_memory(
+        make_memory_update_input(summary=None)
+    )
+
+    assert isinstance(result, ConversationMemory)
+    assert result == expected_memory
+    memory_agent.structured_llm.invoke.assert_called_once()
 
 
 # ---------------------------------------------------------------------
@@ -159,8 +325,7 @@ def test_build_messages_without_previous_memory_does_not_include_previous_memory
 
     assert "PREVIOUS CONVERSATION MEMORY" not in human_prompt
     assert "CURRENT USER MESSAGE" in human_prompt
-    assert "CURRENT PROBLEM" in human_prompt
-    assert "CURRENT CONTEXT" in human_prompt
+    assert "CURRENT STRUCTURED SUMMARY" in human_prompt
     assert "ASSISTANT RESPONSE" in human_prompt
     assert "RESPONSE TYPE" in human_prompt
     assert "Create the first conversation memory" in human_prompt
@@ -193,8 +358,56 @@ def test_build_messages_without_previous_memory_includes_current_turn_fields():
     human_prompt = messages[1].content
 
     assert ticket.description in human_prompt
+    assert "CURRENT STRUCTURED SUMMARY" in human_prompt
     assert summary.problem in human_prompt
     assert summary.context in human_prompt
+    assert summary.intent in human_prompt
+    assert response.response in human_prompt
+    assert str(response.resolution_type) in human_prompt
+
+
+def test_build_messages_without_summary_does_not_include_structured_summary_block():
+    agent = make_memory_agent_without_llm()
+
+    memory_update_input = make_memory_update_input(
+        previous_memory=None,
+        summary=None,
+    )
+
+    messages = agent._build_messages(memory_update_input)
+    human_prompt = messages[1].content
+
+    assert "CURRENT USER MESSAGE" in human_prompt
+    assert "CURRENT STRUCTURED SUMMARY" not in human_prompt
+    assert "Problem:" not in human_prompt
+    assert "Context:" not in human_prompt
+    assert "Intent:" not in human_prompt
+    assert "ASSISTANT RESPONSE" in human_prompt
+    assert "Create the first conversation memory" in human_prompt
+
+
+def test_build_messages_without_summary_includes_ticket_and_response():
+    agent = make_memory_agent_without_llm()
+
+    ticket = make_ticket(
+        description="My iPhone battery still drains fast."
+    )
+    response = make_response(
+        response="Please check Battery Health and review background activity.",
+        resolution_type="troubleshooting_steps",
+    )
+
+    memory_update_input = make_memory_update_input(
+        previous_memory=None,
+        ticket=ticket,
+        summary=None,
+        response=response,
+    )
+
+    messages = agent._build_messages(memory_update_input)
+    human_prompt = messages[1].content
+
+    assert ticket.description in human_prompt
     assert response.response in human_prompt
     assert str(response.resolution_type) in human_prompt
 
@@ -226,7 +439,8 @@ def test_build_messages_with_previous_memory_includes_previous_memory_block():
     )
 
     memory_update_input = make_memory_update_input(
-        previous_memory=previous_memory)
+        previous_memory=previous_memory
+    )
 
     messages = agent._build_messages(memory_update_input)
     human_prompt = messages[1].content
@@ -245,7 +459,8 @@ def test_build_messages_with_previous_memory_has_update_task_not_creation_task()
     )
 
     memory_update_input = make_memory_update_input(
-        previous_memory=previous_memory)
+        previous_memory=previous_memory
+    )
 
     messages = agent._build_messages(memory_update_input)
     human_prompt = messages[1].content
@@ -259,7 +474,8 @@ def test_build_messages_with_blank_previous_memory_treats_it_as_missing():
 
     previous_memory = ConversationMemory(memory="   ")
     memory_update_input = make_memory_update_input(
-        previous_memory=previous_memory)
+        previous_memory=previous_memory
+    )
 
     messages = agent._build_messages(memory_update_input)
     human_prompt = messages[1].content
@@ -299,10 +515,33 @@ def test_build_messages_with_previous_memory_includes_current_turn_fields():
 
     assert previous_memory.memory in human_prompt
     assert ticket.description in human_prompt
+    assert "CURRENT STRUCTURED SUMMARY" in human_prompt
     assert summary.problem in human_prompt
     assert summary.context in human_prompt
+    assert summary.intent in human_prompt
     assert response.response in human_prompt
     assert str(response.resolution_type) in human_prompt
+
+
+def test_build_messages_with_previous_memory_and_no_summary_skips_summary_block():
+    agent = make_memory_agent_without_llm()
+
+    previous_memory = ConversationMemory(
+        memory="The user has an unresolved iPhone battery issue."
+    )
+
+    memory_update_input = make_memory_update_input(
+        previous_memory=previous_memory,
+        summary=None,
+    )
+
+    messages = agent._build_messages(memory_update_input)
+    human_prompt = messages[1].content
+
+    assert "PREVIOUS CONVERSATION MEMORY" in human_prompt
+    assert previous_memory.memory in human_prompt
+    assert "CURRENT STRUCTURED SUMMARY" not in human_prompt
+    assert "Update the previous conversation memory" in human_prompt
 
 
 # ---------------------------------------------------------------------
@@ -319,7 +558,7 @@ def test_system_prompt_defines_memory_agent_boundaries():
     assert "Do not answer the customer" in system_prompt
     assert "Do not generate new troubleshooting steps" in system_prompt
     assert "Do not mention internal pipeline details" in system_prompt
-    assert "agents, prompts, tools, RAG, retrieval, chunks, or system decisions" in system_prompt
+    assert "agents, prompts, tools, RAG, retrieval, chunks, summaries, or system decisions" in system_prompt
 
 
 def test_system_prompt_requires_distinguishing_suggestions_from_user_actions():
@@ -342,6 +581,17 @@ def test_system_prompt_prioritizes_current_turn_over_previous_memory():
     assert "If the current turn contradicts previous memory, prioritize the current turn" in system_prompt
 
 
+def test_system_prompt_mentions_optional_summary():
+    agent = make_memory_agent_without_llm()
+    messages = agent._build_messages(make_memory_update_input())
+
+    system_prompt = messages[0].content
+
+    assert "There may or may not be a structured summary" in system_prompt
+    assert "If a structured summary is provided" in system_prompt
+    assert "If no structured summary is provided" in system_prompt
+
+
 def test_system_prompt_requires_concise_english_memory():
     agent = make_memory_agent_without_llm()
     messages = agent._build_messages(make_memory_update_input())
@@ -350,6 +600,15 @@ def test_system_prompt_requires_concise_english_memory():
 
     assert "Keep the memory concise, factual, and useful" in system_prompt
     assert "Write the memory in English" in system_prompt
+
+
+def test_system_prompt_mentions_memory_length_limit():
+    agent = make_memory_agent_without_llm()
+    messages = agent._build_messages(make_memory_update_input())
+
+    system_prompt = messages[0].content
+
+    assert "1200" in system_prompt
 
 
 # ---------------------------------------------------------------------
@@ -401,6 +660,7 @@ def test_memory_agent_updates_existing_memory_with_mocked_llm(memory_agent: Memo
     )
 
     assert result == expected_memory
+    assert len(result.memory) <= 1200
 
     messages = memory_agent.structured_llm.invoke.call_args.args[0]
     human_prompt = messages[1].content
@@ -408,6 +668,7 @@ def test_memory_agent_updates_existing_memory_with_mocked_llm(memory_agent: Memo
     assert "PREVIOUS CONVERSATION MEMORY" in human_prompt
     assert previous_memory.memory in human_prompt
     assert ticket.description in human_prompt
+    assert "CURRENT STRUCTURED SUMMARY" in human_prompt
     assert summary.problem in human_prompt
     assert response.response in human_prompt
 
@@ -446,13 +707,55 @@ def test_memory_agent_creates_first_memory_with_mocked_llm(memory_agent: MemoryA
     )
 
     assert result == expected_memory
+    assert len(result.memory) <= 1200
 
     messages = memory_agent.structured_llm.invoke.call_args.args[0]
     human_prompt = messages[1].content
 
     assert "PREVIOUS CONVERSATION MEMORY" not in human_prompt
+    assert "CURRENT STRUCTURED SUMMARY" in human_prompt
     assert "Create the first conversation memory" in human_prompt
     assert ticket.description in human_prompt
+
+
+def test_memory_agent_creates_first_memory_without_summary_with_mocked_llm(
+    memory_agent: MemoryAgent,
+):
+    ticket = make_ticket(
+        description="My iPhone battery drains quickly after the latest update."
+    )
+    response = make_response(
+        response="Please check battery health and reduce background activity.",
+        resolution_type="troubleshooting_steps",
+    )
+
+    expected_memory = ConversationMemory(
+        memory=(
+            "The user reports iPhone battery drain after the latest update. "
+            "The assistant suggested checking battery health and reducing background activity."
+        )
+    )
+
+    memory_agent.structured_llm.invoke.return_value = expected_memory
+
+    result = memory_agent.update_memory(
+        make_memory_update_input(
+            previous_memory=None,
+            ticket=ticket,
+            summary=None,
+            response=response,
+        )
+    )
+
+    assert result == expected_memory
+    assert len(result.memory) <= 1200
+
+    messages = memory_agent.structured_llm.invoke.call_args.args[0]
+    human_prompt = messages[1].content
+
+    assert "CURRENT STRUCTURED SUMMARY" not in human_prompt
+    assert ticket.description in human_prompt
+    assert response.response in human_prompt
 
 
 # ---------------------------------------------------------------------
@@ -466,6 +769,7 @@ requires_live_llm = pytest.mark.skipif(
 )
 
 
+@pytest.mark.live_llm
 @requires_live_llm
 def test_memory_agent_live_creates_first_memory():
     agent = MemoryAgent()
@@ -500,6 +804,7 @@ def test_memory_agent_live_creates_first_memory():
 
     assert isinstance(result, ConversationMemory)
     assert result.memory.strip()
+    assert len(result.memory) <= 1200
 
     memory_lower = result.memory.lower()
     assert "iphone" in memory_lower
@@ -507,6 +812,44 @@ def test_memory_agent_live_creates_first_memory():
     assert "update" in memory_lower
 
 
+@pytest.mark.live_llm
+@requires_live_llm
+def test_memory_agent_live_creates_first_memory_without_summary():
+    agent = MemoryAgent()
+
+    ticket = make_ticket(
+        description=(
+            "My iPhone battery drains very quickly after the latest update "
+            "and gets warm when I use basic apps."
+        )
+    )
+    response = make_response(
+        response=(
+            "Please check battery health, reduce background app refresh, "
+            "and monitor whether the device becomes unusually hot."
+        ),
+        resolution_type="troubleshooting_steps",
+    )
+
+    result = agent.update_memory(
+        make_memory_update_input(
+            previous_memory=None,
+            ticket=ticket,
+            summary=None,
+            response=response,
+        )
+    )
+
+    assert isinstance(result, ConversationMemory)
+    assert result.memory.strip()
+    assert len(result.memory) <= 1200
+
+    memory_lower = result.memory.lower()
+    assert "iphone" in memory_lower
+    assert "battery" in memory_lower
+
+
+@pytest.mark.live_llm
 @requires_live_llm
 def test_memory_agent_live_updates_existing_memory():
     agent = MemoryAgent()
@@ -545,6 +888,7 @@ def test_memory_agent_live_updates_existing_memory():
 
     assert isinstance(result, ConversationMemory)
     assert result.memory.strip()
+    assert len(result.memory) <= 1200
 
     memory_lower = result.memory.lower()
     assert "87" in memory_lower
@@ -552,6 +896,7 @@ def test_memory_agent_live_updates_existing_memory():
     assert "battery" in memory_lower
 
 
+@pytest.mark.live_llm
 @requires_live_llm
 def test_memory_agent_live_does_not_confuse_assistant_suggestion_with_user_action():
     agent = MemoryAgent()
@@ -578,6 +923,8 @@ def test_memory_agent_live_does_not_confuse_assistant_suggestion_with_user_actio
         )
     )
 
+    assert len(result.memory) <= 1200
+
     memory_lower = result.memory.lower()
 
     assert "restart" in memory_lower or "battery health" in memory_lower
@@ -594,6 +941,7 @@ def test_memory_agent_live_does_not_confuse_assistant_suggestion_with_user_actio
     assert not any(phrase in memory_lower for phrase in forbidden_phrases)
 
 
+@pytest.mark.live_llm
 @requires_live_llm
 def test_memory_agent_live_prioritizes_current_turn_over_previous_memory():
     agent = MemoryAgent()
@@ -629,6 +977,8 @@ def test_memory_agent_live_prioritizes_current_turn_over_previous_memory():
             response=response,
         )
     )
+
+    assert len(result.memory) <= 1200
 
     memory_lower = result.memory.lower()
 

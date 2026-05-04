@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from src.core.memory_models import ConversationMemory
 from src.memory.memory_store import InMemoryConversationStore
@@ -115,10 +116,34 @@ def test_save_raises_value_error_for_blank_memory(
     store: InMemoryConversationStore,
     memory_text: str,
 ):
-    memory = make_memory(memory_text)
+    memory = ConversationMemory.model_construct(memory=memory_text)
 
     with pytest.raises(ValueError, match="conversation memory cannot be empty"):
         store.save("ticket-001", memory)
+
+
+def test_save_accepts_memory_with_max_allowed_length(
+    store: InMemoryConversationStore,
+):
+    memory = make_memory("x" * 1200)
+
+    store.save("ticket-001", memory)
+
+    stored_memory = store.get("ticket-001")
+
+    assert stored_memory == memory
+    assert stored_memory is not None
+    assert len(stored_memory.memory) == 1200
+
+
+def test_conversation_memory_rejects_too_long_memory():
+    with pytest.raises(ValidationError):
+        make_memory("x" * 1201)
+
+
+def test_conversation_memory_rejects_empty_memory():
+    with pytest.raises(ValidationError):
+        make_memory("")
 
 
 def test_save_accepts_memory_with_surrounding_whitespace(

@@ -163,11 +163,13 @@ def test_loader_returns_no_memory_when_stored_memory_is_blank(memory_text: str):
     """
     This simulates a corrupted or externally inserted blank memory.
 
-    The real InMemoryConversationStore prevents saving blank memory, so this
-    test uses a mocked store to verify that the loader remains defensive.
+    The real ConversationMemory model rejects an empty string and the real
+    InMemoryConversationStore prevents saving blank memory, so this test uses
+    model_construct to verify that the loader remains defensive.
     """
     store = MagicMock()
-    store.get.return_value = ConversationMemory(memory=memory_text)
+    store.get.return_value = ConversationMemory.model_construct(
+        memory=memory_text)
 
     loader = MemoryLoader(store)
 
@@ -365,6 +367,39 @@ def test_loader_integration_returns_no_memory_after_clear():
 
     assert loader.load("ticket-001").has_memory is False
     assert loader.load("ticket-002").has_memory is False
+
+
+def test_loader_returns_memory_with_max_allowed_length(
+    store: InMemoryConversationStore,
+    loader: MemoryLoader,
+):
+    memory = make_memory("x" * 1200)
+
+    store.save("ticket-001", memory)
+
+    result = loader.load("ticket-001")
+
+    assert result.has_memory is True
+    assert result.memory == memory
+    assert len(result.memory.memory) == 1200
+
+
+def test_loader_can_return_corrupted_too_long_memory_if_store_returns_it():
+    """
+    The loader only checks whether memory exists and is not blank.
+    Length validation belongs to ConversationMemory creation/storage.
+    """
+    corrupted_memory = ConversationMemory.model_construct(memory="x" * 1201)
+
+    store = MagicMock()
+    store.get.return_value = corrupted_memory
+
+    loader = MemoryLoader(store)
+
+    result = loader.load("ticket-001")
+
+    assert result.has_memory is True
+    assert result.memory == corrupted_memory
 
 
 def test_loader_integration_memory_cycle_for_conversation():

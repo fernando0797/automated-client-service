@@ -10,6 +10,20 @@ from src.agents.summary_agent import SummaryAgent
 
 
 # ============================================================
+# Helpers
+# ============================================================
+
+def make_summary_agent_without_llm() -> SummaryAgent:
+    """
+    Create a SummaryAgent instance without calling __init__.
+
+    This avoids initializing ChatGoogleGenerativeAI in unit tests,
+    so no GOOGLE_API_KEY/GEMINI_API_KEY is required.
+    """
+    return SummaryAgent.__new__(SummaryAgent)
+
+
+# ============================================================
 # Fixtures
 # ============================================================
 
@@ -17,6 +31,7 @@ from src.agents.summary_agent import SummaryAgent
 def ticket() -> Ticket:
     return Ticket(
         ticket_id="test_001",
+        turn_id="turn_001",
         source="manual_test",
         description=(
             "My iPhone is showing unexpectedly poor battery performance. "
@@ -82,10 +97,129 @@ def test_summary_input_can_be_created(
     assert summary_input.memory_context is None
 
 
+def test_summary_input_accepts_memory_context(
+    ticket: Ticket,
+    built_context: BuiltContext,
+) -> None:
+    memory_context = "The user previously tried restarting the device."
+
+    summary_input = SummaryInput(
+        ticket=ticket,
+        built_context=built_context,
+        memory_context=memory_context,
+    )
+
+    assert summary_input.memory_context == memory_context
+
+
 def test_summary_output_requires_all_fields() -> None:
     with pytest.raises(ValidationError):
         SummaryOutput(
             problem="Missing context and intent",
+        )
+
+
+def test_summary_output_rejects_empty_problem() -> None:
+    with pytest.raises(ValidationError):
+        SummaryOutput(
+            problem="",
+            context="Valid context.",
+            intent="Valid intent.",
+        )
+
+
+def test_summary_output_rejects_empty_context() -> None:
+    with pytest.raises(ValidationError):
+        SummaryOutput(
+            problem="Valid problem.",
+            context="",
+            intent="Valid intent.",
+        )
+
+
+def test_summary_output_rejects_empty_intent() -> None:
+    with pytest.raises(ValidationError):
+        SummaryOutput(
+            problem="Valid problem.",
+            context="Valid context.",
+            intent="",
+        )
+
+
+def test_summary_output_rejects_too_long_problem() -> None:
+    with pytest.raises(ValidationError):
+        SummaryOutput(
+            problem="x" * 501,
+            context="Valid context.",
+            intent="Valid intent.",
+        )
+
+
+def test_summary_output_accepts_max_length_problem() -> None:
+    summary = SummaryOutput(
+        problem="x" * 500,
+        context="Valid context.",
+        intent="Valid intent.",
+    )
+
+    assert len(summary.problem) == 500
+
+
+def test_summary_output_rejects_too_long_context() -> None:
+    with pytest.raises(ValidationError):
+        SummaryOutput(
+            problem="Valid problem.",
+            context="x" * 1001,
+            intent="Valid intent.",
+        )
+
+
+def test_summary_output_accepts_max_length_context() -> None:
+    summary = SummaryOutput(
+        problem="Valid problem.",
+        context="x" * 1000,
+        intent="Valid intent.",
+    )
+
+    assert len(summary.context) == 1000
+
+
+def test_summary_output_rejects_too_long_intent() -> None:
+    with pytest.raises(ValidationError):
+        SummaryOutput(
+            problem="Valid problem.",
+            context="Valid context.",
+            intent="x" * 301,
+        )
+
+
+def test_summary_output_accepts_max_length_intent() -> None:
+    summary = SummaryOutput(
+        problem="Valid problem.",
+        context="Valid context.",
+        intent="x" * 300,
+    )
+
+    assert len(summary.intent) == 300
+
+
+def test_summary_input_requires_ticket(
+    built_context: BuiltContext,
+) -> None:
+    with pytest.raises(ValidationError):
+        SummaryInput(
+            built_context=built_context,
+            memory_context=None,
+        )
+
+
+def test_summary_input_requires_built_context(
+    ticket: Ticket,
+) -> None:
+    with pytest.raises(ValidationError):
+        SummaryInput(
+            ticket=ticket,
+            memory_context=None,
         )
 
 
@@ -96,7 +230,7 @@ def test_summary_output_requires_all_fields() -> None:
 def test_build_messages_returns_system_and_human_messages(
     summary_input: SummaryInput,
 ) -> None:
-    agent = SummaryAgent()
+    agent = make_summary_agent_without_llm()
     messages = agent._build_messages(summary_input)
 
     assert len(messages) == 2
@@ -107,7 +241,7 @@ def test_build_messages_returns_system_and_human_messages(
 def test_build_messages_includes_ticket_description(
     summary_input: SummaryInput,
 ) -> None:
-    agent = SummaryAgent()
+    agent = make_summary_agent_without_llm()
     messages = agent._build_messages(summary_input)
 
     human_message = messages[1].content
@@ -118,7 +252,7 @@ def test_build_messages_includes_ticket_description(
 def test_build_messages_includes_built_context(
     summary_input: SummaryInput,
 ) -> None:
-    agent = SummaryAgent()
+    agent = make_summary_agent_without_llm()
     messages = agent._build_messages(summary_input)
 
     human_message = messages[1].content
@@ -126,16 +260,34 @@ def test_build_messages_includes_built_context(
     assert summary_input.built_context.context_text in human_message
 
 
-def test_build_messages_handles_missing_memory_context(
+def test_build_messages_does_not_include_memory_context_when_missing(
     summary_input: SummaryInput,
 ) -> None:
-    agent = SummaryAgent()
+    agent = make_summary_agent_without_llm()
     messages = agent._build_messages(summary_input)
 
     human_message = messages[1].content
 
-    assert "MEMORY CONTEXT" in human_message
-    assert "None" in human_message
+    assert "MEMORY CONTEXT" not in human_message
+    assert "None" not in human_message
+
+
+def test_build_messages_does_not_include_memory_context_when_blank(
+    ticket: Ticket,
+    built_context: BuiltContext,
+) -> None:
+    summary_input = SummaryInput(
+        ticket=ticket,
+        built_context=built_context,
+        memory_context="   ",
+    )
+
+    agent = make_summary_agent_without_llm()
+    messages = agent._build_messages(summary_input)
+
+    human_message = messages[1].content
+
+    assert "MEMORY CONTEXT" not in human_message
 
 
 def test_build_messages_includes_memory_context_when_present(
@@ -150,12 +302,39 @@ def test_build_messages_includes_memory_context_when_present(
         memory_context=memory_context,
     )
 
-    agent = SummaryAgent()
+    agent = make_summary_agent_without_llm()
     messages = agent._build_messages(summary_input)
 
     human_message = messages[1].content
 
+    assert "MEMORY CONTEXT" in human_message
     assert memory_context in human_message
+
+
+def test_build_messages_system_prompt_mentions_summary_fields(
+    summary_input: SummaryInput,
+) -> None:
+    agent = make_summary_agent_without_llm()
+    messages = agent._build_messages(summary_input)
+
+    system_message = messages[0].content
+
+    assert "problem" in system_message
+    assert "context" in system_message
+    assert "intent" in system_message
+
+
+def test_build_messages_system_prompt_mentions_length_limits(
+    summary_input: SummaryInput,
+) -> None:
+    agent = make_summary_agent_without_llm()
+    messages = agent._build_messages(summary_input)
+
+    system_message = messages[0].content
+
+    assert "500" in system_message
+    assert "1000" in system_message
+    assert "300" in system_message
 
 
 # ============================================================
@@ -174,7 +353,7 @@ class FakeStructuredLLM:
 def test_summarize_returns_summary_output(
     summary_input: SummaryInput,
 ) -> None:
-    agent = SummaryAgent()
+    agent = make_summary_agent_without_llm()
     agent.structured_llm = FakeStructuredLLM()
 
     result = agent.summarize(summary_input)
@@ -183,13 +362,16 @@ def test_summarize_returns_summary_output(
     assert result.problem
     assert result.context
     assert result.intent
+    assert len(result.problem) <= 500
+    assert len(result.context) <= 1000
+    assert len(result.intent) <= 300
 
 
 def test_summarize_uses_built_messages(
     summary_input: SummaryInput,
     monkeypatch,
 ) -> None:
-    agent = SummaryAgent()
+    agent = make_summary_agent_without_llm()
     agent.structured_llm = FakeStructuredLLM()
 
     called = {"value": False}
@@ -213,10 +395,10 @@ def test_summarize_uses_built_messages(
 # 4. Integration test with real LLM call
 # ============================================================
 
-@pytest.mark.integration
+@pytest.mark.live_llm
 @pytest.mark.skipif(
     not os.getenv("GOOGLE_API_KEY"),
-    reason="GOOGLE_API_KEY is not set"
+    reason="GOOGLE_API_KEY is not set",
 )
 def test_summary_agent_real_llm_call_returns_summary_output(
     summary_input: SummaryInput,
@@ -226,6 +408,7 @@ def test_summary_agent_real_llm_call_returns_summary_output(
     result = agent.summarize(summary_input)
 
     assert isinstance(result, SummaryOutput)
+
     assert isinstance(result.problem, str)
     assert isinstance(result.context, str)
     assert isinstance(result.intent, str)
@@ -233,3 +416,7 @@ def test_summary_agent_real_llm_call_returns_summary_output(
     assert result.problem.strip()
     assert result.context.strip()
     assert result.intent.strip()
+
+    assert len(result.problem) <= 500
+    assert len(result.context) <= 1000
+    assert len(result.intent) <= 300

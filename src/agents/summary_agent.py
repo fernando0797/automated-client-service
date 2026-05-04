@@ -20,40 +20,69 @@ class SummaryAgent:
         return result
 
     def _build_messages(self, summary_input: SummaryInput) -> list[BaseMessage]:
-        ticket = summary_input.ticket
-        built_context = summary_input.built_context.context_text
-        memory_context = summary_input.memory_context
-
         system_prompt = """
 You are an internal support summarization component.
 
 Your task is to produce a concise structured summary of the current support case.
+
+Use the current ticket description as the source of truth for the customer's latest message.
+Use the retrieved context only as supporting information.
+Use memory context only if it is provided and relevant to the current case.
 
 Return:
 - problem: what issue the user is experiencing
 - context: relevant contextual information that helps understand or resolve the case
 - intent: what the user is trying to achieve or obtain in this turn
 
+Field limits:
+- problem: maximum 500 characters
+- context: maximum 1000 characters
+- intent: maximum 300 characters
+
 Rules:
 - Be faithful to the provided information.
-- Do not invent facts.
-- Use the retrieved context only as supporting information.
-- If memory context is empty or missing, ignore it.
+- Do not invent facts, policies, guarantees, technical steps, or escalation rules.
+- Do not answer the customer.
+- Do not mention internal components such as agents, RAG, chunks, retrieval, metadata, or knowledge base.
+- Do not expose internal reasoning.
 - Keep the summary concise but informative.
-- When filling the context field, synthesize the most relevant information from RETRIEVED CONTEXT and MEMORY CONTEXT if present. Do not copy the retrieved context verbatim.
+- When filling the context field, synthesize the most relevant information from retrieved context and memory context if present.
+- Do not copy the retrieved context verbatim.
+- If memory context conflicts with the current ticket description, prioritize the current ticket description.
 """.strip()
 
-        human_prompt = f"""
-description:
-{ticket.description}
-The following information was retrieved from the knowledge base and should be used as the main support context for the summary:
-{built_context}
-
-MEMORY CONTEXT
-{memory_context if memory_context else "None"}
-""".strip()
+        human_prompt = self._build_human_prompt(summary_input)
 
         return [
             SystemMessage(content=system_prompt),
             HumanMessage(content=human_prompt),
         ]
+
+    def _build_human_prompt(self, summary_input: SummaryInput) -> str:
+        ticket_description = summary_input.ticket.description.strip()
+        built_context = summary_input.built_context.context_text.strip()
+        memory_context = (summary_input.memory_context or "").strip()
+
+        sections: list[str] = [
+            f"""
+CURRENT TICKET DESCRIPTION
+
+{ticket_description}
+""".strip(),
+            f"""
+RETRIEVED CONTEXT
+
+{built_context}
+""".strip(),
+        ]
+
+        if memory_context:
+            sections.append(
+                f"""
+MEMORY CONTEXT
+
+{memory_context}
+""".strip()
+            )
+
+        return "\n\n".join(sections)

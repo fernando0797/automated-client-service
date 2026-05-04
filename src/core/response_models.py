@@ -2,17 +2,17 @@ from pydantic import BaseModel, Field
 from typing import Literal
 
 from src.core.summary_models import SummaryOutput
-from src.core.context_models import BuiltContext
+from src.core.request_models import Ticket
 
 
 class ResponseInput(BaseModel):
-    summary: SummaryOutput
-    built_context: BuiltContext
+    ticket: Ticket
+    summary: SummaryOutput | None = None
     memory_context: str | None = None
 
 
 class ResponseOutput(BaseModel):
-    response: str
+    response: str = Field(..., min_length=1, max_length=3000)
     tone: Literal[
         "professional",
         "empathetic",
