@@ -22,6 +22,10 @@ class RetrievalPolicy:
     - later turns should avoid filter/hybrid retrieval when new information appears,
       because metadata may point to an older product or issue
     - later turns that require new retrieval should prefer semantic retrieval
+
+    Conversation-level control such as closing, already closed, already escalated,
+    max turns or max RAG calls is handled by ConversationController before this
+    policy is executed.
     """
 
     def __init__(
@@ -31,127 +35,6 @@ class RetrievalPolicy:
     ) -> None:
         self.min_rich_description_words = min_rich_description_words
         self.min_rich_description_chars = min_rich_description_chars
-
-        self.closing_phrases = {
-            # English: thanks
-            "thanks",
-            "thank you",
-            "thanks a lot",
-            "thank you very much",
-            "many thanks",
-            "thx",
-            "ty",
-            "appreciate it",
-            "much appreciated",
-
-            # English: confirmation / resolved
-            "ok",
-            "okay",
-            "alright",
-            "all right",
-            "got it",
-            "understood",
-            "clear",
-            "makes sense",
-            "done",
-            "fixed",
-            "solved",
-            "resolved",
-            "it works",
-            "works now",
-            "that works",
-            "that worked",
-            "that solved it",
-            "that fixed it",
-            "issue solved",
-            "problem solved",
-            "everything works",
-            "everything is working",
-            "no problem",
-            "no problems",
-            "no more issues",
-
-            # English: positive closing
-            "perfect",
-            "great",
-            "nice",
-            "excellent",
-            "awesome",
-            "cool",
-            "good",
-            "very good",
-            "great thanks",
-            "perfect thanks",
-            "okay thanks",
-            "ok thanks",
-            "thanks done",
-            "all good",
-            "all set",
-            "that's all",
-            "nothing else",
-            "no further questions",
-            "bye",
-            "goodbye",
-            "see you",
-            "have a nice day",
-
-            # Spanish: gracias
-            "gracias",
-            "muchas gracias",
-            "mil gracias",
-            "gracias por la ayuda",
-            "te lo agradezco",
-            "se agradece",
-            "muy amable",
-
-            # Spanish: confirmación / resuelto
-            "vale",
-            "ok gracias",
-            "vale gracias",
-            "de acuerdo",
-            "entendido",
-            "comprendido",
-            "claro",
-            "perfecto",
-            "genial",
-            "bien",
-            "muy bien",
-            "hecho",
-            "listo",
-            "arreglado",
-            "solucionado",
-            "resuelto",
-            "funciona",
-            "ya funciona",
-            "ahora funciona",
-            "me funciona",
-            "funciona bien",
-            "todo bien",
-            "todo correcto",
-            "todo perfecto",
-            "todo solucionado",
-            "problema resuelto",
-            "problema solucionado",
-            "incidencia resuelta",
-            "incidencia solucionada",
-            "sin problema",
-            "sin problemas",
-            "no tengo más dudas",
-            "no tengo mas dudas",
-            "nada más",
-            "nada mas",
-            "eso es todo",
-
-            # Spanish: despedida
-            "adiós",
-            "adios",
-            "hasta luego",
-            "nos vemos",
-            "buen día",
-            "buen dia",
-            "que tengas buen día",
-            "que tengas buen dia",
-        }
 
         self.clarification_patterns = {
             "explain it again",
@@ -261,6 +144,9 @@ class RetrievalPolicy:
     def decide(self, policy_input: RetrievalPolicyInput) -> RetrievalPolicyDecision:
         """
         Decide whether the current turn should use RAG, memory, both, or neither.
+
+        This policy assumes that conversation-control cases such as closing or
+        forced escalation have already been handled by ConversationController.
         """
 
         ticket = policy_input.ticket
@@ -274,19 +160,8 @@ class RetrievalPolicy:
 
         is_initial_turn = self._is_initial_turn(ticket.turn_id)
 
-        is_closing = self._is_closing_turn(description)
         is_clarification = self._is_clarification_turn(description)
         is_follow_up = self._is_follow_up_turn(description)
-
-        if is_closing and not has_problem_signal:
-            return RetrievalPolicyDecision(
-                use_rag=False,
-                use_memory=False,
-                is_initial_turn=is_initial_turn,
-                retrieval_mode="none",
-                decision_type="closing",
-                reason="The user turn is a pure closing or acknowledgement message.",
-            )
 
         if is_initial_turn:
             return self._decide_initial_turn(
@@ -300,7 +175,7 @@ class RetrievalPolicy:
             has_rich_description=has_rich_description,
             has_problem_signal=has_problem_signal,
             is_follow_up=is_follow_up,
-            is_clarification=is_clarification
+            is_clarification=is_clarification,
         )
 
     def _decide_initial_turn(
@@ -361,7 +236,7 @@ class RetrievalPolicy:
         has_rich_description: bool,
         has_problem_signal: bool,
         is_follow_up: bool,
-        is_clarification: bool
+        is_clarification: bool,
     ) -> RetrievalPolicyDecision:
         """
         Decide retrieval behavior for later conversational turns.
@@ -507,12 +382,6 @@ class RetrievalPolicy:
             return True
 
         return False
-
-    def _is_closing_turn(self, description: str) -> bool:
-        if not description:
-            return False
-
-        return description in self.closing_phrases
 
     def _is_clarification_turn(self, description: str) -> bool:
         if not description:

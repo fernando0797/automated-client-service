@@ -1,14 +1,15 @@
 from __future__ import annotations
+
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
+
 from src.core.request_models import Ticket
 
 
 RetrievalMode = Literal["none", "filter", "semantic", "hybrid"]
 
 RetrievalDecisionType = Literal[
-    "closing",
     "clarification",
     "follow_up",
     "problem_update",

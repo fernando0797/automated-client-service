@@ -215,6 +215,7 @@ def test_policy_decision_rejects_invalid_retrieval_mode() -> None:
         RetrievalPolicyDecision(
             use_rag=True,
             use_memory=False,
+            is_initial_turn=True,
             retrieval_mode="invalid",
             decision_type="metadata_and_description",
             reason="Invalid mode.",
@@ -226,9 +227,22 @@ def test_policy_decision_rejects_invalid_decision_type() -> None:
         RetrievalPolicyDecision(
             use_rag=True,
             use_memory=False,
+            is_initial_turn=True,
             retrieval_mode="hybrid",
             decision_type="new_issue",
-            reason="Invalid decision type because new_issue is no longer supported.",
+            reason="Invalid decision type.",
+        )
+
+
+def test_policy_decision_rejects_closing_decision_type() -> None:
+    with pytest.raises(ValidationError):
+        RetrievalPolicyDecision(
+            use_rag=False,
+            use_memory=False,
+            is_initial_turn=False,
+            retrieval_mode="none",
+            decision_type="closing",
+            reason="Closing is handled by ConversationController.",
         )
 
 
@@ -237,6 +251,7 @@ def test_policy_decision_rejects_empty_reason() -> None:
         RetrievalPolicyDecision(
             use_rag=True,
             use_memory=False,
+            is_initial_turn=True,
             retrieval_mode="hybrid",
             decision_type="metadata_and_description",
             reason="",
@@ -531,94 +546,6 @@ def test_non_problem_text_does_not_have_problem_signal(
     normalized = policy._normalize_text(description)
 
     assert policy._has_problem_signal(normalized) is False
-
-
-# =============================================================================
-# Closing turn tests
-# =============================================================================
-
-
-@pytest.mark.parametrize(
-    "description",
-    [
-        "thanks",
-        "thank you",
-        "ok",
-        "okay",
-        "perfect",
-        "great",
-        "nice",
-        "done",
-        "gracias",
-        "vale",
-        "ok gracias",
-        "perfecto",
-        "genial",
-        "de acuerdo",
-        "  GRACIAS  ",
-    ],
-)
-def test_closing_turn_is_detected(
-    policy: RetrievalPolicy,
-    description: str,
-) -> None:
-    normalized = policy._normalize_text(description)
-
-    assert policy._is_closing_turn(normalized) is True
-
-
-@pytest.mark.parametrize(
-    "description",
-    [
-        "thanks but it still fails",
-        "ok but the battery still drains",
-        "vale pero sigue fallando",
-        "gracias, ahora se calienta",
-        "perfect, but now it is not charging",
-    ],
-)
-def test_problematic_message_containing_closing_word_is_not_pure_closing(
-    policy: RetrievalPolicy,
-    description: str,
-) -> None:
-    normalized = policy._normalize_text(description)
-
-    assert policy._is_closing_turn(normalized) is False
-    assert policy._has_problem_signal(normalized) is True
-
-
-def test_decide_closing_turn_uses_no_rag_and_no_memory(
-    policy: RetrievalPolicy,
-) -> None:
-    policy_input = make_policy_input(
-        description="thanks",
-        turn_id="002",
-        memory_context="Previous conversation context.",
-    )
-
-    decision = policy.decide(policy_input)
-
-    assert decision.use_rag is False
-    assert decision.use_memory is False
-    assert decision.retrieval_mode == "none"
-    assert decision.decision_type == "closing"
-
-
-def test_closing_has_priority_over_initial_metadata(
-    policy: RetrievalPolicy,
-) -> None:
-    policy_input = make_policy_input(
-        description="thanks",
-        turn_id="001",
-        memory_context=None,
-    )
-
-    decision = policy.decide(policy_input)
-
-    assert decision.use_rag is False
-    assert decision.use_memory is False
-    assert decision.retrieval_mode == "none"
-    assert decision.decision_type == "closing"
 
 
 # =============================================================================
@@ -976,6 +903,59 @@ def test_initial_turn_with_empty_turn_id_is_treated_as_initial_turn(
     assert decision.decision_type == "metadata_and_description"
 
 
+def test_initial_closing_like_text_is_not_handled_by_retrieval_policy(
+    policy: RetrievalPolicy,
+) -> None:
+    policy_input = make_policy_input(
+        description="thanks",
+        turn_id="001",
+        memory_context=None,
+        domain="technical_support",
+        subdomain="battery_life",
+        product="iphone",
+    )
+
+    decision = policy.decide(policy_input)
+
+    assert decision.decision_type == "metadata_only"
+    assert decision.use_rag is True
+    assert decision.retrieval_mode == "filter"
+
+
+def test_later_closing_like_text_is_insufficient_if_reaches_retrieval_policy(
+    policy: RetrievalPolicy,
+) -> None:
+    policy_input = make_policy_input(
+        description="thanks",
+        turn_id="002",
+        memory_context=None,
+    )
+
+    decision = policy.decide(policy_input)
+
+    assert decision.decision_type == "insufficient_information"
+    assert decision.use_rag is False
+    assert decision.use_memory is False
+    assert decision.retrieval_mode == "none"
+
+
+def test_later_closing_like_text_with_memory_is_insufficient_but_memory_available(
+    policy: RetrievalPolicy,
+) -> None:
+    policy_input = make_policy_input(
+        description="gracias",
+        turn_id="002",
+        memory_context="Previous issue was about iPhone battery drain.",
+    )
+
+    decision = policy.decide(policy_input)
+
+    assert decision.decision_type == "insufficient_information"
+    assert decision.use_rag is False
+    assert decision.use_memory is True
+    assert decision.retrieval_mode == "none"
+
+
 # =============================================================================
 # Later turn decision tests: stale metadata protection
 # =============================================================================
@@ -1133,7 +1113,7 @@ def test_later_problem_update_has_priority_over_stale_metadata(
     assert decision.decision_type == "problem_update"
 
 
-def test_later_problematic_message_containing_closing_phrase_is_not_closing(
+def test_later_problematic_message_containing_closing_phrase_is_problem_update(
     policy: RetrievalPolicy,
 ) -> None:
     policy_input = make_policy_input(
@@ -1144,7 +1124,6 @@ def test_later_problematic_message_containing_closing_phrase_is_not_closing(
 
     decision = policy.decide(policy_input)
 
-    assert decision.decision_type != "closing"
     assert decision.use_rag is True
     assert decision.use_memory is True
     assert decision.retrieval_mode == "semantic"
@@ -1202,7 +1181,6 @@ def test_decide_always_returns_valid_decision(
     assert isinstance(decision.use_memory, bool)
     assert decision.retrieval_mode in {"none", "filter", "semantic", "hybrid"}
     assert decision.decision_type in {
-        "closing",
         "clarification",
         "follow_up",
         "problem_update",
@@ -1473,7 +1451,7 @@ def test_integration_valid_later_ticket_with_stale_metadata_uses_semantic(
     assert decision.decision_type == "problem_update"
 
 
-def test_integration_valid_later_closing_ticket_uses_no_rag(
+def test_integration_valid_later_closing_like_ticket_is_not_handled_as_closing_by_policy(
     input_validator: InputValidator,
     policy: RetrievalPolicy,
 ) -> None:
@@ -1495,9 +1473,9 @@ def test_integration_valid_later_closing_ticket_uses_no_rag(
     )
 
     assert decision.use_rag is False
-    assert decision.use_memory is False
+    assert decision.use_memory is True
     assert decision.retrieval_mode == "none"
-    assert decision.decision_type == "closing"
+    assert decision.decision_type == "insufficient_information"
 
 
 def test_integration_valid_later_clarification_ticket_uses_memory_only(
