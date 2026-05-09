@@ -20,11 +20,15 @@ if not GOOGLE_API_KEY:
 MAX_TURNS_PER_TICKET = 8
 MAX_RAG_CALLS_PER_TICKET = 4
 
-DEFAULT_ESCALATION_RESPONSE = (
-    "Thank you for the information provided. "
-    "This case requires review by our human support team to ensure it is handled correctly. "
-    "We have escalated your ticket to a support specialist, who will review the details and follow up with the next steps. "
-    "Please keep an eye on your usual contact channel for updates."
+DEFAULT_ALREADY_ESCALATED_RESPONSE = (
+    "Your ticket has already been escalated to our human support team."
+
+    "A support specialist will review the case and follow up through the usual contact channel. Please keep an eye on your notifications for the next steps."
+)
+
+DEFAULT_FORCE_ESCALATION_RESPONSE = (
+    "This case requires review by our human support team. "
+    "I will escalate your ticket so a specialist can review it."
 )
 
 DEFAULT_CLOSED_TICKET_RESPONSE = (

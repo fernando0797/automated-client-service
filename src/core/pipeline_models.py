@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field
 
 from src.core.request_models import Ticket
 from src.core.conversation_state_models import ConversationState
-from src.core.conversation_control_models import ConversationControlDecision
 from src.core.retrieval_policy_models import RetrievalPolicyDecision
 from src.core.retrieval_tool_models import RetrievalToolOutput
 from src.core.context_models import BuiltContext
@@ -19,10 +18,11 @@ class PipelineOutput(BaseModel):
     ticket: Ticket
 
     previous_conversation_state: ConversationState
-    conversation_control_decision: ConversationControlDecision
     conversation_state_after: ConversationState | None = None
 
     previous_conversation_memory: ConversationMemory | None = None
+    memory_after: ConversationMemory | None = None
+
     retrieval_decision: RetrievalPolicyDecision | None = None
 
     query_rewriter_output: QueryRewriterOutput | None = None
@@ -31,4 +31,3 @@ class PipelineOutput(BaseModel):
     summary: SummaryOutput | None = None
 
     response: ResponseOutput | PredefinedEscalationResponse | PredefinedClosingResponse
-    memory_after: ConversationMemory | None = None

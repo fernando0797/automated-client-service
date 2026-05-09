@@ -27,6 +27,7 @@ class ResponseOutput(BaseModel):
         "policy_explanation",
     ]
     requires_escalation: bool
+    should_close: bool
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     escalation_channel: Literal[
         "phone",

@@ -22,7 +22,7 @@ from src.core.default_models import (
 
 from src.conversation.conversation_state_store import InMemoryConversationStateStore
 from src.conversation.conversation_state_loader import ConversationStateLoader
-from src.conversation.conversation_controller import ConversationController
+from src.conversation.conversation_updater import ConversationUpdater
 
 from src.memory.memory_store import InMemoryConversationStore
 from src.memory.memory_loader import MemoryLoader
@@ -56,12 +56,14 @@ def make_ticket(
 def make_response(
     response: str = "Test response.",
     requires_escalation: bool = False,
+    should_close: bool = False,
 ) -> ResponseOutput:
     return ResponseOutput(
         response=response,
         tone="professional",
         resolution_type="escalation" if requires_escalation else "direct_solution",
         requires_escalation=requires_escalation,
+        should_close=should_close,
         confidence=0.9,
         escalation_channel="support_ticket" if requires_escalation else "none",
     )
@@ -85,10 +87,6 @@ def make_retrieval_decision(
 
 
 def make_retrieval_output_with_results() -> RetrievalToolOutput:
-    """
-    Uses model_construct so the pipeline can test the non-empty retrieval branch
-    without building real KnowledgeChunk / RetrievalResult objects.
-    """
     return RetrievalToolOutput.model_construct(
         called=True,
         mode_used="semantic",
@@ -216,7 +214,7 @@ class FakeMemoryAgent:
 
 
 # =============================================================================
-# Pipeline factory
+# Fixtures / factory
 # =============================================================================
 
 
@@ -233,11 +231,8 @@ def conversation_state_loader(
 
 
 @pytest.fixture
-def conversation_controller() -> ConversationController:
-    return ConversationController(
-        max_turns_per_ticket=8,
-        max_rag_calls_per_ticket=4,
-    )
+def conversation_updater() -> ConversationUpdater:
+    return ConversationUpdater()
 
 
 @pytest.fixture
@@ -256,12 +251,14 @@ def build_pipeline(
     *,
     conversation_state_loader: ConversationStateLoader,
     conversation_state_store: InMemoryConversationStateStore,
-    conversation_controller: ConversationController,
+    conversation_updater: ConversationUpdater,
     memory_store: InMemoryConversationStore,
     memory_loader: MemoryLoader,
     retrieval_decision: RetrievalPolicyDecision | None = None,
     retrieval_output: RetrievalToolOutput | None = None,
     response_output: ResponseOutput | None = None,
+    max_rag_calls_per_ticket: int = 4,
+    max_turns_per_ticket: int = 8,
 ) -> tuple[
     SupportPipeline,
     FakeInputValidator,
@@ -301,7 +298,7 @@ def build_pipeline(
         input_validator=input_validator,
         conversation_state_loader=conversation_state_loader,
         conversation_state_store=conversation_state_store,
-        conversation_controller=conversation_controller,
+        conversation_updater=conversation_updater,
         memory_store=memory_store,
         memory_loader=memory_loader,
         retrieval_policy=retrieval_policy,
@@ -311,6 +308,8 @@ def build_pipeline(
         summary_agent=summary_agent,
         response_agent=response_agent,
         memory_agent=memory_agent,
+        max_rag_calls_per_ticket=max_rag_calls_per_ticket,
+        max_turns_per_ticket=max_turns_per_ticket,
     )
 
     return (
@@ -327,17 +326,28 @@ def build_pipeline(
 
 
 # =============================================================================
-# Pre-control branches
+# Initial state branches
 # =============================================================================
 
 
-def test_pipeline_closing_turn_skips_memory_retrieval_and_response_agent(
+def test_pipeline_already_closed_ticket_skips_memory_retrieval_and_response_agent(
     conversation_state_loader: ConversationStateLoader,
     conversation_state_store: InMemoryConversationStateStore,
-    conversation_controller: ConversationController,
+    conversation_updater: ConversationUpdater,
     memory_store: InMemoryConversationStore,
     memory_loader: MemoryLoader,
 ) -> None:
+    existing_state = ConversationState(
+        ticket_id="ticket_001",
+        turn_count=1,
+        rag_call_count=0,
+        last_turn_id="turn_001",
+        status="closed",
+        created_at="2026-05-05T10:00:00+00:00",
+        updated_at="2026-05-05T10:10:00+00:00",
+    )
+    conversation_state_store.save("ticket_001", existing_state)
+
     (
         pipeline,
         input_validator,
@@ -351,20 +361,22 @@ def test_pipeline_closing_turn_skips_memory_retrieval_and_response_agent(
     ) = build_pipeline(
         conversation_state_loader=conversation_state_loader,
         conversation_state_store=conversation_state_store,
-        conversation_controller=conversation_controller,
+        conversation_updater=conversation_updater,
         memory_store=memory_store,
         memory_loader=memory_loader,
     )
 
-    ticket = make_ticket(description="Gracias", turn_id="turn_001")
+    ticket = make_ticket(description="I still need help.", turn_id="turn_002")
 
     output = pipeline.run_turn(ticket)
 
     assert input_validator.calls == 1
-    assert output.conversation_control_decision.control_type == "closed"
     assert isinstance(output.response, PredefinedClosingResponse)
-    assert output.conversation_state_after is not None
     assert output.conversation_state_after.status == "closed"
+
+    assert output.retrieval_decision is None
+    assert output.previous_conversation_memory is None
+    assert output.memory_after is None
 
     assert retrieval_policy.calls == 0
     assert query_rewriter_agent.calls == 0
@@ -379,10 +391,66 @@ def test_pipeline_closing_turn_skips_memory_retrieval_and_response_agent(
     assert saved_state.status == "closed"
 
 
+def test_pipeline_already_escalated_ticket_skips_memory_retrieval_and_response_agent(
+    conversation_state_loader: ConversationStateLoader,
+    conversation_state_store: InMemoryConversationStateStore,
+    conversation_updater: ConversationUpdater,
+    memory_store: InMemoryConversationStore,
+    memory_loader: MemoryLoader,
+) -> None:
+    existing_state = ConversationState(
+        ticket_id="ticket_001",
+        turn_count=2,
+        rag_call_count=1,
+        last_turn_id="turn_002",
+        status="escalated",
+        created_at="2026-05-05T10:00:00+00:00",
+        updated_at="2026-05-05T10:10:00+00:00",
+    )
+    conversation_state_store.save("ticket_001", existing_state)
+
+    (
+        pipeline,
+        _input_validator,
+        retrieval_policy,
+        query_rewriter_agent,
+        retriever_tool,
+        context_builder,
+        summary_agent,
+        response_agent,
+        memory_agent,
+    ) = build_pipeline(
+        conversation_state_loader=conversation_state_loader,
+        conversation_state_store=conversation_state_store,
+        conversation_updater=conversation_updater,
+        memory_store=memory_store,
+        memory_loader=memory_loader,
+    )
+
+    ticket = make_ticket(description="Any update?", turn_id="turn_003")
+
+    output = pipeline.run_turn(ticket)
+
+    assert isinstance(output.response, PredefinedEscalationResponse)
+    assert output.conversation_state_after.status == "escalated"
+
+    assert output.retrieval_decision is None
+    assert output.previous_conversation_memory is None
+    assert output.memory_after is None
+
+    assert retrieval_policy.calls == 0
+    assert query_rewriter_agent.calls == 0
+    assert retriever_tool.calls == 0
+    assert context_builder.calls == 0
+    assert summary_agent.calls == 0
+    assert response_agent.calls == 0
+    assert memory_agent.calls == 0
+
+
 def test_pipeline_escalates_when_max_turns_reached_and_skips_flow(
     conversation_state_loader: ConversationStateLoader,
     conversation_state_store: InMemoryConversationStateStore,
-    conversation_controller: ConversationController,
+    conversation_updater: ConversationUpdater,
     memory_store: InMemoryConversationStore,
     memory_loader: MemoryLoader,
 ) -> None:
@@ -410,9 +478,10 @@ def test_pipeline_escalates_when_max_turns_reached_and_skips_flow(
     ) = build_pipeline(
         conversation_state_loader=conversation_state_loader,
         conversation_state_store=conversation_state_store,
-        conversation_controller=conversation_controller,
+        conversation_updater=conversation_updater,
         memory_store=memory_store,
         memory_loader=memory_loader,
+        max_turns_per_ticket=8,
     )
 
     ticket = make_ticket(
@@ -422,10 +491,7 @@ def test_pipeline_escalates_when_max_turns_reached_and_skips_flow(
 
     output = pipeline.run_turn(ticket)
 
-    assert output.conversation_control_decision.control_type == "escalate"
-    assert output.conversation_control_decision.force_escalation is True
     assert isinstance(output.response, PredefinedEscalationResponse)
-    assert output.conversation_state_after is not None
     assert output.conversation_state_after.status == "escalated"
 
     assert retrieval_policy.calls == 0
@@ -444,17 +510,14 @@ def test_pipeline_escalates_when_max_turns_reached_and_skips_flow(
 def test_pipeline_raises_when_ticket_id_is_missing(
     conversation_state_loader: ConversationStateLoader,
     conversation_state_store: InMemoryConversationStateStore,
-    conversation_controller: ConversationController,
+    conversation_updater: ConversationUpdater,
     memory_store: InMemoryConversationStore,
     memory_loader: MemoryLoader,
 ) -> None:
-    (
-        pipeline,
-        *_,
-    ) = build_pipeline(
+    (pipeline, *_) = build_pipeline(
         conversation_state_loader=conversation_state_loader,
         conversation_state_store=conversation_state_store,
-        conversation_controller=conversation_controller,
+        conversation_updater=conversation_updater,
         memory_store=memory_store,
         memory_loader=memory_loader,
     )
@@ -469,14 +532,14 @@ def test_pipeline_raises_when_ticket_id_is_missing(
 
 
 # =============================================================================
-# allow_rag=False branch
+# Max RAG calls branch
 # =============================================================================
 
 
 def test_pipeline_max_rag_calls_loads_memory_and_skips_retrieval_policy(
     conversation_state_loader: ConversationStateLoader,
     conversation_state_store: InMemoryConversationStateStore,
-    conversation_controller: ConversationController,
+    conversation_updater: ConversationUpdater,
     memory_store: InMemoryConversationStore,
     memory_loader: MemoryLoader,
 ) -> None:
@@ -509,9 +572,10 @@ def test_pipeline_max_rag_calls_loads_memory_and_skips_retrieval_policy(
     ) = build_pipeline(
         conversation_state_loader=conversation_state_loader,
         conversation_state_store=conversation_state_store,
-        conversation_controller=conversation_controller,
+        conversation_updater=conversation_updater,
         memory_store=memory_store,
         memory_loader=memory_loader,
+        max_rag_calls_per_ticket=4,
     )
 
     ticket = make_ticket(
@@ -521,8 +585,7 @@ def test_pipeline_max_rag_calls_loads_memory_and_skips_retrieval_policy(
 
     output = pipeline.run_turn(ticket)
 
-    assert output.conversation_control_decision.control_type == "max_rag_calls_reached"
-    assert output.conversation_control_decision.allow_rag is False
+    assert output.retrieval_decision is None
     assert output.previous_conversation_memory is not None
     assert output.previous_conversation_memory.memory == (
         "Previous issue was about battery drain."
@@ -556,7 +619,7 @@ def test_pipeline_max_rag_calls_loads_memory_and_skips_retrieval_policy(
 def test_pipeline_retrieval_policy_no_rag_calls_response_and_memory_only(
     conversation_state_loader: ConversationStateLoader,
     conversation_state_store: InMemoryConversationStateStore,
-    conversation_controller: ConversationController,
+    conversation_updater: ConversationUpdater,
     memory_store: InMemoryConversationStore,
     memory_loader: MemoryLoader,
 ) -> None:
@@ -586,7 +649,7 @@ def test_pipeline_retrieval_policy_no_rag_calls_response_and_memory_only(
     ) = build_pipeline(
         conversation_state_loader=conversation_state_loader,
         conversation_state_store=conversation_state_store,
-        conversation_controller=conversation_controller,
+        conversation_updater=conversation_updater,
         memory_store=memory_store,
         memory_loader=memory_loader,
         retrieval_decision=retrieval_decision,
@@ -626,7 +689,7 @@ def test_pipeline_retrieval_policy_no_rag_calls_response_and_memory_only(
 def test_pipeline_initial_rag_skips_query_rewriter_and_summarizes_results(
     conversation_state_loader: ConversationStateLoader,
     conversation_state_store: InMemoryConversationStateStore,
-    conversation_controller: ConversationController,
+    conversation_updater: ConversationUpdater,
     memory_store: InMemoryConversationStore,
     memory_loader: MemoryLoader,
 ) -> None:
@@ -651,7 +714,7 @@ def test_pipeline_initial_rag_skips_query_rewriter_and_summarizes_results(
     ) = build_pipeline(
         conversation_state_loader=conversation_state_loader,
         conversation_state_store=conversation_state_store,
-        conversation_controller=conversation_controller,
+        conversation_updater=conversation_updater,
         memory_store=memory_store,
         memory_loader=memory_loader,
         retrieval_decision=retrieval_decision,
@@ -691,7 +754,7 @@ def test_pipeline_initial_rag_skips_query_rewriter_and_summarizes_results(
 def test_pipeline_later_rag_with_memory_calls_query_rewriter(
     conversation_state_loader: ConversationStateLoader,
     conversation_state_store: InMemoryConversationStateStore,
-    conversation_controller: ConversationController,
+    conversation_updater: ConversationUpdater,
     memory_store: InMemoryConversationStore,
     memory_loader: MemoryLoader,
 ) -> None:
@@ -708,8 +771,7 @@ def test_pipeline_later_rag_with_memory_calls_query_rewriter(
 
     memory_store.save(
         "ticket_001",
-        ConversationMemory(
-            memory="Previous issue was about iPhone battery drain."),
+        ConversationMemory(memory="Previous issue was about iPhone battery drain."),
     )
 
     retrieval_decision = make_retrieval_decision(
@@ -733,7 +795,7 @@ def test_pipeline_later_rag_with_memory_calls_query_rewriter(
     ) = build_pipeline(
         conversation_state_loader=conversation_state_loader,
         conversation_state_store=conversation_state_store,
-        conversation_controller=conversation_controller,
+        conversation_updater=conversation_updater,
         memory_store=memory_store,
         memory_loader=memory_loader,
         retrieval_decision=retrieval_decision,
@@ -771,7 +833,7 @@ def test_pipeline_later_rag_with_memory_calls_query_rewriter(
 def test_pipeline_later_rag_without_memory_skips_query_rewriter(
     conversation_state_loader: ConversationStateLoader,
     conversation_state_store: InMemoryConversationStateStore,
-    conversation_controller: ConversationController,
+    conversation_updater: ConversationUpdater,
     memory_store: InMemoryConversationStore,
     memory_loader: MemoryLoader,
 ) -> None:
@@ -807,7 +869,7 @@ def test_pipeline_later_rag_without_memory_skips_query_rewriter(
     ) = build_pipeline(
         conversation_state_loader=conversation_state_loader,
         conversation_state_store=conversation_state_store,
-        conversation_controller=conversation_controller,
+        conversation_updater=conversation_updater,
         memory_store=memory_store,
         memory_loader=memory_loader,
         retrieval_decision=retrieval_decision,
@@ -840,7 +902,7 @@ def test_pipeline_later_rag_without_memory_skips_query_rewriter(
 def test_pipeline_rag_with_no_results_skips_context_builder_and_summary_agent(
     conversation_state_loader: ConversationStateLoader,
     conversation_state_store: InMemoryConversationStateStore,
-    conversation_controller: ConversationController,
+    conversation_updater: ConversationUpdater,
     memory_store: InMemoryConversationStore,
     memory_loader: MemoryLoader,
 ) -> None:
@@ -865,7 +927,7 @@ def test_pipeline_rag_with_no_results_skips_context_builder_and_summary_agent(
     ) = build_pipeline(
         conversation_state_loader=conversation_state_loader,
         conversation_state_store=conversation_state_store,
-        conversation_controller=conversation_controller,
+        conversation_updater=conversation_updater,
         memory_store=memory_store,
         memory_loader=memory_loader,
         retrieval_decision=retrieval_decision,
@@ -892,19 +954,19 @@ def test_pipeline_rag_with_no_results_skips_context_builder_and_summary_agent(
 
 
 # =============================================================================
-# Response-driven escalation branch
+# Response-driven status changes
 # =============================================================================
 
 
 def test_pipeline_response_agent_escalation_updates_state_to_escalated(
     conversation_state_loader: ConversationStateLoader,
     conversation_state_store: InMemoryConversationStateStore,
-    conversation_controller: ConversationController,
+    conversation_updater: ConversationUpdater,
     memory_store: InMemoryConversationStore,
     memory_loader: MemoryLoader,
 ) -> None:
     response_output = make_response(
-        response="This case should be escalated.",
+        response="I will pass your case to human support.",
         requires_escalation=True,
     )
 
@@ -919,7 +981,7 @@ def test_pipeline_response_agent_escalation_updates_state_to_escalated(
     (
         pipeline,
         _input_validator,
-        retrieval_policy,
+        _retrieval_policy,
         _query_rewriter_agent,
         _retriever_tool,
         _context_builder,
@@ -929,7 +991,7 @@ def test_pipeline_response_agent_escalation_updates_state_to_escalated(
     ) = build_pipeline(
         conversation_state_loader=conversation_state_loader,
         conversation_state_store=conversation_state_store,
-        conversation_controller=conversation_controller,
+        conversation_updater=conversation_updater,
         memory_store=memory_store,
         memory_loader=memory_loader,
         retrieval_decision=retrieval_decision,
@@ -937,7 +999,7 @@ def test_pipeline_response_agent_escalation_updates_state_to_escalated(
     )
 
     ticket = make_ticket(
-        description="The device smells burned and shuts down.",
+        description="Please pass me to human support.",
         turn_id="turn_001",
     )
 
@@ -945,7 +1007,7 @@ def test_pipeline_response_agent_escalation_updates_state_to_escalated(
 
     assert isinstance(output.response, ResponseOutput)
     assert output.response.requires_escalation is True
-    assert output.conversation_state_after is not None
+    assert output.response.should_close is False
     assert output.conversation_state_after.status == "escalated"
 
     assert response_agent.calls == 1
@@ -956,6 +1018,67 @@ def test_pipeline_response_agent_escalation_updates_state_to_escalated(
     assert saved_state.status == "escalated"
 
 
+def test_pipeline_response_agent_closing_updates_state_to_closed(
+    conversation_state_loader: ConversationStateLoader,
+    conversation_state_store: InMemoryConversationStateStore,
+    conversation_updater: ConversationUpdater,
+    memory_store: InMemoryConversationStore,
+    memory_loader: MemoryLoader,
+) -> None:
+    response_output = make_response(
+        response="You're welcome. Have a nice day.",
+        requires_escalation=False,
+        should_close=True,
+    )
+
+    retrieval_decision = make_retrieval_decision(
+        use_rag=False,
+        use_memory=False,
+        is_initial_turn=False,
+        retrieval_mode="none",
+        decision_type="insufficient_information",
+    )
+
+    (
+        pipeline,
+        _input_validator,
+        _retrieval_policy,
+        _query_rewriter_agent,
+        _retriever_tool,
+        _context_builder,
+        _summary_agent,
+        response_agent,
+        memory_agent,
+    ) = build_pipeline(
+        conversation_state_loader=conversation_state_loader,
+        conversation_state_store=conversation_state_store,
+        conversation_updater=conversation_updater,
+        memory_store=memory_store,
+        memory_loader=memory_loader,
+        retrieval_decision=retrieval_decision,
+        response_output=response_output,
+    )
+
+    ticket = make_ticket(
+        description="Thanks, that solved it.",
+        turn_id="turn_001",
+    )
+
+    output = pipeline.run_turn(ticket)
+
+    assert isinstance(output.response, ResponseOutput)
+    assert output.response.requires_escalation is False
+    assert output.response.should_close is True
+    assert output.conversation_state_after.status == "closed"
+
+    assert response_agent.calls == 1
+    assert memory_agent.calls == 1
+
+    saved_state = conversation_state_store.get("ticket_001")
+    assert saved_state is not None
+    assert saved_state.status == "closed"
+
+
 # =============================================================================
 # Turn deduplication / persistence
 # =============================================================================
@@ -964,7 +1087,7 @@ def test_pipeline_response_agent_escalation_updates_state_to_escalated(
 def test_pipeline_does_not_increment_turn_count_for_repeated_turn_id(
     conversation_state_loader: ConversationStateLoader,
     conversation_state_store: InMemoryConversationStateStore,
-    conversation_controller: ConversationController,
+    conversation_updater: ConversationUpdater,
     memory_store: InMemoryConversationStore,
     memory_loader: MemoryLoader,
 ) -> None:
@@ -987,13 +1110,10 @@ def test_pipeline_does_not_increment_turn_count_for_repeated_turn_id(
         decision_type="insufficient_information",
     )
 
-    (
-        pipeline,
-        *_,
-    ) = build_pipeline(
+    (pipeline, *_) = build_pipeline(
         conversation_state_loader=conversation_state_loader,
         conversation_state_store=conversation_state_store,
-        conversation_controller=conversation_controller,
+        conversation_updater=conversation_updater,
         memory_store=memory_store,
         memory_loader=memory_loader,
         retrieval_decision=retrieval_decision,
@@ -1006,7 +1126,6 @@ def test_pipeline_does_not_increment_turn_count_for_repeated_turn_id(
 
     output = pipeline.run_turn(ticket)
 
-    assert output.conversation_state_after is not None
     assert output.conversation_state_after.turn_count == 1
 
     saved_state = conversation_state_store.get("ticket_001")
@@ -1014,10 +1133,61 @@ def test_pipeline_does_not_increment_turn_count_for_repeated_turn_id(
     assert saved_state.turn_count == 1
 
 
+def test_pipeline_does_not_increment_rag_count_for_repeated_turn_id(
+    conversation_state_loader: ConversationStateLoader,
+    conversation_state_store: InMemoryConversationStateStore,
+    conversation_updater: ConversationUpdater,
+    memory_store: InMemoryConversationStore,
+    memory_loader: MemoryLoader,
+) -> None:
+    existing_state = ConversationState(
+        ticket_id="ticket_001",
+        turn_count=1,
+        rag_call_count=1,
+        last_turn_id="turn_001",
+        status="active",
+        created_at="2026-05-05T10:00:00+00:00",
+        updated_at="2026-05-05T10:10:00+00:00",
+    )
+    conversation_state_store.save("ticket_001", existing_state)
+
+    retrieval_decision = make_retrieval_decision(
+        use_rag=True,
+        use_memory=False,
+        is_initial_turn=False,
+        retrieval_mode="semantic",
+        decision_type="problem_update",
+    )
+
+    (pipeline, *_) = build_pipeline(
+        conversation_state_loader=conversation_state_loader,
+        conversation_state_store=conversation_state_store,
+        conversation_updater=conversation_updater,
+        memory_store=memory_store,
+        memory_loader=memory_loader,
+        retrieval_decision=retrieval_decision,
+        retrieval_output=make_retrieval_output_without_results(),
+    )
+
+    ticket = make_ticket(
+        description="Same RAG turn retried.",
+        turn_id="turn_001",
+    )
+
+    output = pipeline.run_turn(ticket)
+
+    assert output.conversation_state_after.turn_count == 1
+    assert output.conversation_state_after.rag_call_count == 1
+
+    saved_state = conversation_state_store.get("ticket_001")
+    assert saved_state is not None
+    assert saved_state.rag_call_count == 1
+
+
 def test_pipeline_persists_memory_for_next_turn(
     conversation_state_loader: ConversationStateLoader,
     conversation_state_store: InMemoryConversationStateStore,
-    conversation_controller: ConversationController,
+    conversation_updater: ConversationUpdater,
     memory_store: InMemoryConversationStore,
     memory_loader: MemoryLoader,
 ) -> None:
@@ -1029,13 +1199,10 @@ def test_pipeline_persists_memory_for_next_turn(
         decision_type="insufficient_information",
     )
 
-    (
-        pipeline,
-        *_,
-    ) = build_pipeline(
+    (pipeline, *_) = build_pipeline(
         conversation_state_loader=conversation_state_loader,
         conversation_state_store=conversation_state_store,
-        conversation_controller=conversation_controller,
+        conversation_updater=conversation_updater,
         memory_store=memory_store,
         memory_loader=memory_loader,
         retrieval_decision=retrieval_decision,

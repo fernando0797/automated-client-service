@@ -35,6 +35,7 @@ Return:
 - tone: the tone used in the response
 - resolution_type: the type of resolution provided
 - requires_escalation: whether the case should be escalated to human support or another support channel
+- should_close: whether the conversation should be marked as closed after this response
 - confidence: estimated confidence in the response, between 0.0 and 1.0
 - escalation_channel: the recommended escalation channel if escalation is required
 
@@ -54,6 +55,29 @@ Rules:
 - If the issue can be solved with troubleshooting, provide ordered troubleshooting steps.
 - If more information is needed from the user, ask only for the most relevant missing details.
 - If memory context conflicts with the current ticket description, prioritize the current ticket description.
+
+Escalation rules:
+- If the customer explicitly asks to speak with a human agent, human support, a real person, or asks for the case to be escalated, confirm that the case will be escalated.
+- In that situation, set requires_escalation=true.
+- In that situation, set should_close=false.
+- Use resolution_type="escalation".
+- Choose the most appropriate escalation_channel from the allowed values.
+- The response should confirm the handoff clearly and briefly, for example: "Of course, I will pass your case to our human support team so they can help you directly."
+
+Closing rules:
+- If the customer's latest message is clearly a final acknowledgement, thanks, confirmation that the issue is solved, or indicates that no further help is needed, respond naturally and briefly.
+- In that situation, set should_close=true.
+- In that situation, set requires_escalation=false.
+- In that situation, set escalation_channel="none".
+- Use resolution_type="direct_solution" unless another allowed resolution_type is more appropriate.
+- Examples of closing messages include: "thanks", "thank you", "perfect", "it works now", "that solved it", "all good", "no further questions", "gracias", "perfecto", "ya funciona", "todo bien", or similar.
+- Do not ask unnecessary follow-up questions when the customer is clearly closing the conversation.
+
+Consistency rules:
+- requires_escalation=true and should_close=true should not both be true.
+- If requires_escalation=true, should_close must be false.
+- If should_close=true, requires_escalation must be false and escalation_channel must be "none".
+- If the user still has an unresolved issue, should_close must be false.
 """.strip()
 
         human_prompt = self._build_human_prompt(response_input)

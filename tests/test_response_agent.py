@@ -29,6 +29,32 @@ def ticket() -> Ticket:
 
 
 @pytest.fixture
+def closing_ticket() -> Ticket:
+    return Ticket(
+        ticket_id="ticket_001",
+        turn_id="turn_002",
+        source="email",
+        description="Thanks, it works now.",
+        domain="technical_support",
+        subdomain="battery_issue",
+        product="iphone",
+    )
+
+
+@pytest.fixture
+def escalation_ticket() -> Ticket:
+    return Ticket(
+        ticket_id="ticket_001",
+        turn_id="turn_002",
+        source="email",
+        description="I want to speak with a human agent.",
+        domain="technical_support",
+        subdomain="battery_issue",
+        product="iphone",
+    )
+
+
+@pytest.fixture
 def summary_output() -> SummaryOutput:
     return SummaryOutput(
         problem="The user reports unexpectedly poor iPhone battery performance.",
@@ -74,6 +100,7 @@ def test_response_output_can_be_created() -> None:
         tone="empathetic",
         resolution_type="troubleshooting_steps",
         requires_escalation=False,
+        should_close=False,
         confidence=0.85,
         escalation_channel="none",
     )
@@ -82,8 +109,42 @@ def test_response_output_can_be_created() -> None:
     assert response.tone == "empathetic"
     assert response.resolution_type == "troubleshooting_steps"
     assert response.requires_escalation is False
+    assert response.should_close is False
     assert response.confidence == 0.85
     assert response.escalation_channel == "none"
+
+
+def test_response_output_can_mark_conversation_as_closed() -> None:
+    response = ResponseOutput(
+        response="You're welcome. I'm glad everything is working now.",
+        tone="professional",
+        resolution_type="direct_solution",
+        requires_escalation=False,
+        should_close=True,
+        confidence=0.9,
+        escalation_channel="none",
+    )
+
+    assert response.should_close is True
+    assert response.requires_escalation is False
+    assert response.escalation_channel == "none"
+
+
+def test_response_output_can_mark_escalation_without_closing() -> None:
+    response = ResponseOutput(
+        response="Of course, I will pass your case to our human support team.",
+        tone="empathetic",
+        resolution_type="escalation",
+        requires_escalation=True,
+        should_close=False,
+        confidence=0.8,
+        escalation_channel="human_chat",
+    )
+
+    assert response.requires_escalation is True
+    assert response.should_close is False
+    assert response.resolution_type == "escalation"
+    assert response.escalation_channel == "human_chat"
 
 
 def test_response_input_can_be_created(
@@ -128,6 +189,18 @@ def test_response_output_requires_required_fields() -> None:
         )
 
 
+def test_response_output_requires_should_close() -> None:
+    with pytest.raises(ValidationError):
+        ResponseOutput(
+            response="This is a response.",
+            tone="professional",
+            resolution_type="direct_solution",
+            requires_escalation=False,
+            confidence=0.8,
+            escalation_channel="none",
+        )
+
+
 def test_response_output_rejects_empty_response() -> None:
     with pytest.raises(ValidationError):
         ResponseOutput(
@@ -135,6 +208,7 @@ def test_response_output_rejects_empty_response() -> None:
             tone="professional",
             resolution_type="direct_solution",
             requires_escalation=False,
+            should_close=False,
             confidence=0.8,
             escalation_channel="none",
         )
@@ -147,6 +221,7 @@ def test_response_output_rejects_too_long_response() -> None:
             tone="professional",
             resolution_type="direct_solution",
             requires_escalation=False,
+            should_close=False,
             confidence=0.8,
             escalation_channel="none",
         )
@@ -158,6 +233,7 @@ def test_response_output_accepts_max_length_response() -> None:
         tone="professional",
         resolution_type="direct_solution",
         requires_escalation=False,
+        should_close=False,
         confidence=0.8,
         escalation_channel="none",
     )
@@ -172,6 +248,7 @@ def test_response_output_rejects_invalid_tone() -> None:
             tone="friendly",
             resolution_type="direct_solution",
             requires_escalation=False,
+            should_close=False,
             confidence=0.8,
             escalation_channel="none",
         )
@@ -184,6 +261,7 @@ def test_response_output_rejects_invalid_resolution_type() -> None:
             tone="professional",
             resolution_type="random_resolution",
             requires_escalation=False,
+            should_close=False,
             confidence=0.8,
             escalation_channel="none",
         )
@@ -196,6 +274,7 @@ def test_response_output_rejects_invalid_escalation_channel() -> None:
             tone="professional",
             resolution_type="direct_solution",
             requires_escalation=False,
+            should_close=False,
             confidence=0.8,
             escalation_channel="whatsapp",
         )
@@ -208,6 +287,7 @@ def test_response_output_rejects_confidence_above_one() -> None:
             tone="professional",
             resolution_type="direct_solution",
             requires_escalation=False,
+            should_close=False,
             confidence=1.5,
             escalation_channel="none",
         )
@@ -220,6 +300,7 @@ def test_response_output_rejects_confidence_below_zero() -> None:
             tone="professional",
             resolution_type="direct_solution",
             requires_escalation=False,
+            should_close=False,
             confidence=-0.1,
             escalation_channel="none",
         )
@@ -231,6 +312,7 @@ def test_response_output_allows_none_confidence() -> None:
         tone="professional",
         resolution_type="direct_solution",
         requires_escalation=False,
+        should_close=False,
         confidence=None,
         escalation_channel="none",
     )
@@ -244,6 +326,7 @@ def test_response_output_defaults_escalation_channel_to_none() -> None:
         tone="professional",
         resolution_type="direct_solution",
         requires_escalation=False,
+        should_close=False,
         confidence=0.8,
     )
 
@@ -426,6 +509,43 @@ def test_build_messages_system_prompt_mentions_escalation_rules(
     assert '"none"' in system_message
 
 
+def test_build_messages_system_prompt_mentions_should_close(
+    response_input: ResponseInput,
+) -> None:
+    agent = ResponseAgent()
+    messages = agent._build_messages(response_input)
+
+    system_message = messages[0].content
+
+    assert "should_close" in system_message
+    assert "whether the conversation should be marked as closed" in system_message
+
+
+def test_build_messages_system_prompt_mentions_closing_rules(
+    response_input: ResponseInput,
+) -> None:
+    agent = ResponseAgent()
+    messages = agent._build_messages(response_input)
+
+    system_message = messages[0].content
+
+    assert "Closing rules" in system_message
+    assert "should_close=true" in system_message
+    assert "requires_escalation=false" in system_message
+
+
+def test_build_messages_system_prompt_mentions_consistency_rules(
+    response_input: ResponseInput,
+) -> None:
+    agent = ResponseAgent()
+    messages = agent._build_messages(response_input)
+
+    system_message = messages[0].content
+
+    assert "Consistency rules" in system_message
+    assert "requires_escalation=true and should_close=true should not both be true" in system_message
+
+
 def test_build_messages_system_prompt_mentions_response_length_limit(
     response_input: ResponseInput,
 ) -> None:
@@ -452,6 +572,7 @@ class FakeStructuredLLM:
             tone="empathetic",
             resolution_type="troubleshooting_steps",
             requires_escalation=False,
+            should_close=False,
             confidence=0.86,
             escalation_channel="none",
         )
@@ -461,14 +582,28 @@ class FakeEscalationStructuredLLM:
     def invoke(self, messages):
         return ResponseOutput(
             response=(
-                "This case should be reviewed by a support specialist because "
-                "the available information is not enough to resolve it safely."
+                "Of course, I will pass your case to our human support team "
+                "so they can help you directly."
             ),
             tone="professional",
             resolution_type="escalation",
             requires_escalation=True,
+            should_close=False,
             confidence=0.72,
             escalation_channel="support_ticket",
+        )
+
+
+class FakeClosingStructuredLLM:
+    def invoke(self, messages):
+        return ResponseOutput(
+            response="You're welcome. I'm glad everything is working now.",
+            tone="professional",
+            resolution_type="direct_solution",
+            requires_escalation=False,
+            should_close=True,
+            confidence=0.92,
+            escalation_channel="none",
         )
 
 
@@ -485,6 +620,7 @@ def test_generate_response_returns_response_output(
     assert result.tone
     assert result.resolution_type
     assert result.requires_escalation is False
+    assert result.should_close is False
     assert result.escalation_channel == "none"
 
 
@@ -499,6 +635,7 @@ def test_generate_response_works_without_summary(
     assert isinstance(result, ResponseOutput)
     assert result.response
     assert result.requires_escalation is False
+    assert result.should_close is False
 
 
 def test_generate_response_uses_built_messages(
@@ -535,12 +672,33 @@ def test_generate_response_can_return_escalation(
 
     assert isinstance(result, ResponseOutput)
     assert result.requires_escalation is True
+    assert result.should_close is False
     assert result.resolution_type == "escalation"
     assert result.escalation_channel == "support_ticket"
 
 
+def test_generate_response_can_return_closing(
+    closing_ticket: Ticket,
+) -> None:
+    response_input = ResponseInput(
+        ticket=closing_ticket,
+        summary=None,
+        memory_context="The assistant previously gave troubleshooting steps.",
+    )
+
+    agent = ResponseAgent()
+    agent.structured_llm = FakeClosingStructuredLLM()
+
+    result = agent.generate_response(response_input)
+
+    assert isinstance(result, ResponseOutput)
+    assert result.should_close is True
+    assert result.requires_escalation is False
+    assert result.escalation_channel == "none"
+
+
 # ============================================================
-# 4. Integration test with real LLM call
+# 4. Integration tests with real LLM call
 # ============================================================
 
 @pytest.mark.live_llm
@@ -577,6 +735,7 @@ def test_response_agent_real_llm_call_returns_response_output(
     ]
 
     assert isinstance(result.requires_escalation, bool)
+    assert isinstance(result.should_close, bool)
 
     if result.confidence is not None:
         assert 0.0 <= result.confidence <= 1.0
@@ -591,3 +750,65 @@ def test_response_agent_real_llm_call_returns_response_output(
 
     if result.requires_escalation is False:
         assert result.escalation_channel == "none"
+
+    if result.requires_escalation is True:
+        assert result.should_close is False
+        assert result.resolution_type == "escalation"
+
+    if result.should_close is True:
+        assert result.requires_escalation is False
+        assert result.escalation_channel == "none"
+
+
+@pytest.mark.live_llm
+@pytest.mark.skipif(
+    not os.getenv("GOOGLE_API_KEY"),
+    reason="GOOGLE_API_KEY is not set",
+)
+def test_response_agent_real_llm_call_can_detect_closing(
+    closing_ticket: Ticket,
+) -> None:
+    response_input = ResponseInput(
+        ticket=closing_ticket,
+        summary=None,
+        memory_context="The assistant previously suggested troubleshooting steps.",
+    )
+
+    agent = ResponseAgent()
+
+    result = agent.generate_response(response_input)
+
+    assert isinstance(result, ResponseOutput)
+    assert result.should_close is True
+    assert result.requires_escalation is False
+    assert result.escalation_channel == "none"
+
+
+@pytest.mark.live_llm
+@pytest.mark.skipif(
+    not os.getenv("GOOGLE_API_KEY"),
+    reason="GOOGLE_API_KEY is not set",
+)
+def test_response_agent_real_llm_call_can_detect_escalation(
+    escalation_ticket: Ticket,
+) -> None:
+    response_input = ResponseInput(
+        ticket=escalation_ticket,
+        summary=None,
+        memory_context=None,
+    )
+
+    agent = ResponseAgent()
+
+    result = agent.generate_response(response_input)
+
+    assert isinstance(result, ResponseOutput)
+    assert result.requires_escalation is True
+    assert result.should_close is False
+    assert result.resolution_type == "escalation"
+    assert result.escalation_channel in [
+        "phone",
+        "email",
+        "human_chat",
+        "support_ticket",
+    ]

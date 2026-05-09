@@ -63,14 +63,14 @@ def test_build_omits_empty_sections():
     assert "DOMAIN" in built.context_text
 
 
-def test_build_with_empty_results_returns_header_only():
+def test_build_with_empty_results_returns_empty_context():
     builder = ContextBuilder()
 
     built = builder.build([])
 
-    assert built.context_text == "RETRIEVED CONTEXT"
-    assert built.total_chars == len("RETRIEVED CONTEXT")
+    assert built.context_text == ""
     assert built.results_used == []
+    assert built.total_chars == 0
 
 
 def test_build_preserves_order_within_each_section():

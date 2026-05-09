@@ -146,7 +146,7 @@ def test_invoke_when_use_rag_false_and_mode_none_returns_empty_output(
         retrieval_mode="none",
         query=None,
         k=5,
-        decision_type="closing",
+        decision_type="clarification",
         is_initial_turn=False,
     )
 
@@ -176,7 +176,7 @@ def test_invoke_when_use_rag_false_and_mode_none_ignores_query(
         retrieval_mode="none",
         query="optimized query that should not be used",
         k=5,
-        decision_type="closing",
+        decision_type="clarification",
         is_initial_turn=False,
     )
 
@@ -204,7 +204,7 @@ def test_invoke_when_mode_none_returns_consistent_empty_output(
         retrieval_mode="none",
         query="   ",
         k=3,
-        decision_type="closing",
+        decision_type="clarification",
         is_initial_turn=False,
     )
 
@@ -565,7 +565,7 @@ def test_empty_output_contract_is_consistent_for_no_rag(
         retrieval_mode="none",
         query=None,
         k=5,
-        decision_type="closing",
+        decision_type="clarification",
         is_initial_turn=False,
     )
 
@@ -672,7 +672,7 @@ def test_tool_boundary_integration_closing_turn_does_not_call_retriever(
         use_rag=False,
         use_memory=False,
         retrieval_mode="none",
-        decision_type="closing",
+        decision_type="clarification",
         reason="User is closing the conversation.",
         is_initial_turn=False,
     )
