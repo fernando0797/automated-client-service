@@ -63,6 +63,7 @@ def make_response(
     ),
     resolution_type: str = "troubleshooting_steps",
     requires_escalation: bool = False,
+    should_close: bool = False,
     escalation_channel: str = "none",
 ) -> ResponseOutput:
     return ResponseOutput(
@@ -70,6 +71,7 @@ def make_response(
         tone="professional",
         resolution_type=resolution_type,
         requires_escalation=requires_escalation,
+        should_close=should_close,
         confidence=0.8,
         escalation_channel=escalation_channel,
     )
