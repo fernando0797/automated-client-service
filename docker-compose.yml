@@ -1,0 +1,21 @@
+services:
+  db_postgres:
+    image: postgres:16
+    container_name: tfg_postgres
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer
+    container_name: tfg_adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db_postgres
+
+volumes:
+  postgres_data:

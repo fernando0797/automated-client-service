@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
+from typing import Literal
 
 from src.core.request_models import Ticket
 from src.core.conversation_state_models import ConversationState
@@ -16,6 +17,7 @@ from src.core.default_models import PredefinedClosingResponse, PredefinedEscalat
 
 class PipelineOutput(BaseModel):
     ticket: Ticket
+    initial_route: Literal["already_closed", "already_escalated", "force_escalation", "rag_limit_reached", "active"]
 
     previous_conversation_state: ConversationState
     conversation_state_after: ConversationState | None = None
@@ -31,3 +33,5 @@ class PipelineOutput(BaseModel):
     summary: SummaryOutput | None = None
 
     response: ResponseOutput | PredefinedEscalationResponse | PredefinedClosingResponse
+
+    nodes_executed: list[str] = Field(default_factory=list)

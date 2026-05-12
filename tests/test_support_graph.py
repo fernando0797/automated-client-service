@@ -160,26 +160,25 @@ class FakeInputValidator:
         return ticket
 
 
-class FakeConversationLoader:
-    def __init__(self, state: ConversationState):
+class FakeConversationStateRepository:
+    def __init__(self, state: ConversationState | None):
         self.state = state
-        self.calls = 0
-
-    def load(self, ticket_id: str | None) -> ConversationState:
-        self.calls += 1
-        return self.state
-
-
-class FakeConversationStateStore:
-    def __init__(self):
-        self.calls = 0
+        self.get_calls = 0
+        self.save_calls = 0
+        self.last_get_ticket_id = None
         self.saved_ticket_id = None
         self.saved_state = None
 
+    def get(self, ticket_id: str | None) -> ConversationState | None:
+        self.get_calls += 1
+        self.last_get_ticket_id = ticket_id
+        return self.state
+
     def save(self, ticket_id: str, state: ConversationState) -> None:
-        self.calls += 1
+        self.save_calls += 1
         self.saved_ticket_id = ticket_id
         self.saved_state = state
+        self.state = state
 
 
 class FakeConversationUpdater:
@@ -209,7 +208,11 @@ class FakeConversationUpdater:
         elif response is not None and response.should_close:
             status = "closed"
 
-        rag_increment = 1 if retrieval_decision is not None and retrieval_decision.use_rag else 0
+        rag_increment = (
+            1
+            if retrieval_decision is not None and retrieval_decision.use_rag
+            else 0
+        )
 
         return make_conversation_state(
             ticket_id=previous_state.ticket_id,
@@ -220,26 +223,25 @@ class FakeConversationUpdater:
         )
 
 
-class FakeMemoryLoader:
-    def __init__(self, loaded_memory: LoadedMemory):
-        self.loaded_memory = loaded_memory
-        self.calls = 0
-
-    def load(self, ticket_id: str | None) -> LoadedMemory:
-        self.calls += 1
-        return self.loaded_memory
-
-
-class FakeMemoryStore:
-    def __init__(self):
-        self.calls = 0
+class FakeMemoryRepository:
+    def __init__(self, loaded_memory: LoadedMemory | None = None):
+        self.loaded_memory = loaded_memory or loaded_memory_empty()
+        self.load_calls = 0
+        self.save_calls = 0
+        self.last_load_ticket_id = None
         self.saved_ticket_id = None
         self.saved_memory = None
 
+    def load(self, ticket_id: str | None) -> LoadedMemory:
+        self.load_calls += 1
+        self.last_load_ticket_id = ticket_id
+        return self.loaded_memory
+
     def save(self, ticket_id: str, memory: ConversationMemory) -> None:
-        self.calls += 1
+        self.save_calls += 1
         self.saved_ticket_id = ticket_id
         self.saved_memory = memory
+        self.loaded_memory = LoadedMemory(has_memory=True, memory=memory)
 
 
 class FakeRetrievalPolicy:
@@ -313,11 +315,9 @@ class FakeMemoryAgent:
 @dataclass
 class FakeDeps:
     input_validator: FakeInputValidator
-    conversation_loader: FakeConversationLoader
-    conversation_state_store: FakeConversationStateStore
+    conversation_state_repository: FakeConversationStateRepository
     conversation_updater: FakeConversationUpdater
-    memory_loader: FakeMemoryLoader
-    memory_store: FakeMemoryStore
+    memory_repository: FakeMemoryRepository
     retrieval_policy: FakeRetrievalPolicy
     query_rewriter_agent: FakeQueryRewriterAgent
     retriever_tool: FakeRetrieverTool
@@ -337,13 +337,13 @@ def make_deps(
 ) -> FakeDeps:
     return FakeDeps(
         input_validator=FakeInputValidator(),
-        conversation_loader=FakeConversationLoader(
+        conversation_state_repository=FakeConversationStateRepository(
             conversation_state or make_conversation_state()
         ),
-        conversation_state_store=FakeConversationStateStore(),
         conversation_updater=FakeConversationUpdater(),
-        memory_loader=FakeMemoryLoader(loaded_memory or loaded_memory_empty()),
-        memory_store=FakeMemoryStore(),
+        memory_repository=FakeMemoryRepository(
+            loaded_memory or loaded_memory_empty()
+        ),
         retrieval_policy=FakeRetrievalPolicy(
             retrieval_decision
             or make_retrieval_decision(
@@ -367,11 +367,11 @@ def make_deps(
 def make_graph(deps: FakeDeps):
     return build_support_graph(
         input_validator=deps.input_validator,
-        conversation_loader=deps.conversation_loader,
-        conversation_state_store=deps.conversation_state_store,
+        conversation_loader=deps.conversation_state_repository,
+        conversation_state_store=deps.conversation_state_repository,
         conversation_updater=deps.conversation_updater,
-        memory_loader=deps.memory_loader,
-        memory_store=deps.memory_store,
+        memory_loader=deps.memory_repository,
+        memory_store=deps.memory_repository,
         retrieval_policy=deps.retrieval_policy,
         query_rewriter_agent=deps.query_rewriter_agent,
         retriever_tool=deps.retriever_tool,
@@ -381,6 +381,15 @@ def make_graph(deps: FakeDeps):
         memory_agent=deps.memory_agent,
         max_turns_per_ticket=5,
         max_rag_calls_per_ticket=3,
+    )
+
+
+def invoke_graph(graph, ticket: Ticket | None = None):
+    return graph.invoke(
+        {
+            "ticket": ticket or make_ticket(),
+            "nodes_executed": [],
+        }
     )
 
 
@@ -403,16 +412,23 @@ def test_graph_already_closed_returns_predefined_response_and_skips_update_save_
     )
     graph = make_graph(deps)
 
-    final_state = graph.invoke({"ticket": make_ticket()})
+    final_state = invoke_graph(graph)
 
     assert isinstance(final_state["response"], PredefinedClosingResponse)
     assert final_state["initial_route"] == "already_closed"
 
+    assert final_state["nodes_executed"] == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "already_closed_response",
+    ]
+
     assert deps.conversation_updater.calls == 0
-    assert deps.conversation_state_store.calls == 0
-    assert deps.memory_loader.calls == 0
+    assert deps.conversation_state_repository.save_calls == 0
+    assert deps.memory_repository.load_calls == 0
     assert deps.memory_agent.calls == 0
-    assert deps.memory_store.calls == 0
+    assert deps.memory_repository.save_calls == 0
     assert deps.retrieval_policy.calls == 0
     assert deps.retriever_tool.calls == 0
     assert deps.response_agent.calls == 0
@@ -424,16 +440,23 @@ def test_graph_already_escalated_returns_predefined_response_and_skips_update_sa
     )
     graph = make_graph(deps)
 
-    final_state = graph.invoke({"ticket": make_ticket()})
+    final_state = invoke_graph(graph)
 
     assert isinstance(final_state["response"], PredefinedEscalationResponse)
     assert final_state["initial_route"] == "already_escalated"
 
+    assert final_state["nodes_executed"] == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "already_escalated_response",
+    ]
+
     assert deps.conversation_updater.calls == 0
-    assert deps.conversation_state_store.calls == 0
-    assert deps.memory_loader.calls == 0
+    assert deps.conversation_state_repository.save_calls == 0
+    assert deps.memory_repository.load_calls == 0
     assert deps.memory_agent.calls == 0
-    assert deps.memory_store.calls == 0
+    assert deps.memory_repository.save_calls == 0
     assert deps.retrieval_policy.calls == 0
     assert deps.retriever_tool.calls == 0
     assert deps.response_agent.calls == 0
@@ -449,18 +472,27 @@ def test_graph_force_escalation_updates_and_saves_state_without_memory_or_rag():
     )
     graph = make_graph(deps)
 
-    final_state = graph.invoke({"ticket": make_ticket()})
+    final_state = invoke_graph(graph)
 
     assert isinstance(final_state["response"], PredefinedEscalationResponse)
     assert final_state["initial_route"] == "force_escalation"
     assert final_state["conversation_state_after"].status == "escalated"
 
-    assert deps.conversation_updater.calls == 1
-    assert deps.conversation_state_store.calls == 1
+    assert final_state["nodes_executed"] == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "force_escalation_response",
+        "update_conversation",
+        "save_conversation_state",
+    ]
 
-    assert deps.memory_loader.calls == 0
+    assert deps.conversation_updater.calls == 1
+    assert deps.conversation_state_repository.save_calls == 1
+
+    assert deps.memory_repository.load_calls == 0
     assert deps.memory_agent.calls == 0
-    assert deps.memory_store.calls == 0
+    assert deps.memory_repository.save_calls == 0
     assert deps.retrieval_policy.calls == 0
     assert deps.retriever_tool.calls == 0
     assert deps.response_agent.calls == 0
@@ -477,7 +509,7 @@ def test_graph_rag_limit_reached_loads_memory_and_skips_retrieval_policy_and_rag
     )
     graph = make_graph(deps)
 
-    final_state = graph.invoke({"ticket": make_ticket()})
+    final_state = invoke_graph(graph)
 
     assert final_state["initial_route"] == "rag_limit_reached"
     assert isinstance(final_state["response"], ResponseOutput)
@@ -485,12 +517,24 @@ def test_graph_rag_limit_reached_loads_memory_and_skips_retrieval_policy_and_rag
     assert "retrieval_decision" not in final_state or final_state["retrieval_decision"] is None
     assert "retrieval_output" not in final_state or final_state["retrieval_output"] is None
 
-    assert deps.memory_loader.calls == 1
+    assert final_state["nodes_executed"] == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
+
+    assert deps.memory_repository.load_calls == 1
     assert deps.response_agent.calls == 1
     assert deps.memory_agent.calls == 1
-    assert deps.memory_store.calls == 1
+    assert deps.memory_repository.save_calls == 1
     assert deps.conversation_updater.calls == 1
-    assert deps.conversation_state_store.calls == 1
+    assert deps.conversation_state_repository.save_calls == 1
 
     assert deps.retrieval_policy.calls == 0
     assert deps.query_rewriter_agent.calls == 0
@@ -516,7 +560,7 @@ def test_graph_active_no_rag_generates_response_updates_memory_and_state():
     )
     graph = make_graph(deps)
 
-    final_state = graph.invoke({"ticket": make_ticket()})
+    final_state = invoke_graph(graph)
 
     assert final_state["initial_route"] == "active"
     assert final_state["retrieval_decision"].use_rag is False
@@ -524,13 +568,26 @@ def test_graph_active_no_rag_generates_response_updates_memory_and_state():
     assert final_state["memory_after"].memory == "Updated memory."
     assert final_state["conversation_state_after"].status == "active"
 
-    assert deps.memory_loader.calls == 1
+    assert final_state["nodes_executed"] == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
+
+    assert deps.memory_repository.load_calls == 1
     assert deps.retrieval_policy.calls == 1
     assert deps.response_agent.calls == 1
     assert deps.memory_agent.calls == 1
-    assert deps.memory_store.calls == 1
+    assert deps.memory_repository.save_calls == 1
     assert deps.conversation_updater.calls == 1
-    assert deps.conversation_state_store.calls == 1
+    assert deps.conversation_state_repository.save_calls == 1
 
     assert deps.query_rewriter_agent.calls == 0
     assert deps.retriever_tool.calls == 0
@@ -556,7 +613,7 @@ def test_graph_active_rag_with_results_builds_context_summary_response_memory_an
     )
     graph = make_graph(deps)
 
-    final_state = graph.invoke({"ticket": make_ticket()})
+    final_state = invoke_graph(graph)
 
     assert final_state["initial_route"] == "active"
     assert final_state["retrieval_decision"].use_rag is True
@@ -567,15 +624,31 @@ def test_graph_active_rag_with_results_builds_context_summary_response_memory_an
     assert final_state["memory_after"] is not None
     assert final_state["conversation_state_after"].rag_call_count == 1
 
+    assert final_state["nodes_executed"] == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "retrieve_results_tool",
+        "build_context",
+        "build_summary",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
+
     assert deps.retrieval_policy.calls == 1
     assert deps.retriever_tool.calls == 1
     assert deps.context_builder.calls == 1
     assert deps.summary_agent.calls == 1
     assert deps.response_agent.calls == 1
     assert deps.memory_agent.calls == 1
-    assert deps.memory_store.calls == 1
+    assert deps.memory_repository.save_calls == 1
     assert deps.conversation_updater.calls == 1
-    assert deps.conversation_state_store.calls == 1
+    assert deps.conversation_state_repository.save_calls == 1
 
     assert deps.query_rewriter_agent.calls == 0
 
@@ -598,7 +671,7 @@ def test_graph_active_rag_without_results_skips_context_and_summary():
     )
     graph = make_graph(deps)
 
-    final_state = graph.invoke({"ticket": make_ticket()})
+    final_state = invoke_graph(graph)
 
     assert final_state["initial_route"] == "active"
     assert final_state["retrieval_output"].total_results == 0
@@ -606,12 +679,26 @@ def test_graph_active_rag_without_results_skips_context_and_summary():
     assert "summary" not in final_state or final_state["summary"] is None
     assert isinstance(final_state["response"], ResponseOutput)
 
+    assert final_state["nodes_executed"] == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "retrieve_results_tool",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
+
     assert deps.retrieval_policy.calls == 1
     assert deps.retriever_tool.calls == 1
     assert deps.response_agent.calls == 1
     assert deps.memory_agent.calls == 1
     assert deps.conversation_updater.calls == 1
-    assert deps.conversation_state_store.calls == 1
+    assert deps.conversation_state_repository.save_calls == 1
 
     assert deps.context_builder.calls == 0
     assert deps.summary_agent.calls == 0
@@ -636,16 +723,33 @@ def test_graph_active_followup_with_memory_uses_query_rewriter_before_retrieval(
     )
     graph = make_graph(deps)
 
-    final_state = graph.invoke({"ticket": make_ticket()})
+    final_state = invoke_graph(graph)
 
     assert final_state["query_rewriter_output"].optimized_query == "optimized overheating query"
     assert deps.query_rewriter_agent.calls == 1
     assert deps.retriever_tool.calls == 1
     assert deps.retriever_tool.last_input.query == "optimized overheating query"
 
+    assert final_state["nodes_executed"] == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "rewrite_query",
+        "retrieve_results_tool",
+        "build_context",
+        "build_summary",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
+
     assert deps.context_builder.calls == 1
     assert deps.summary_agent.calls == 1
     assert deps.response_agent.calls == 1
     assert deps.memory_agent.calls == 1
     assert deps.conversation_updater.calls == 1
-    assert deps.conversation_state_store.calls == 1
+    assert deps.conversation_state_repository.save_calls == 1

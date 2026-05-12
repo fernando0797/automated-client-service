@@ -148,6 +148,10 @@ def make_retrieval_output_with_results() -> RetrievalToolOutput:
     )
 
 
+def assert_node_trace(result: dict, expected_node: str) -> None:
+    assert result["nodes_executed"] == [expected_node]
+
+
 # ---------------------------------------------------------------------
 # Fakes
 # ---------------------------------------------------------------------
@@ -162,14 +166,20 @@ class FakeInputValidator:
         return ticket.model_copy(update={"description": ticket.description.strip()})
 
 
-class FakeConversationLoader:
-    def __init__(self, state: ConversationState):
+class FakeConversationStateRepository:
+    def __init__(self, state: ConversationState | None):
         self.state = state
-        self.called_with = None
+        self.called_with_get = None
+        self.saved_ticket_id = None
+        self.saved_state = None
 
-    def load(self, ticket_id: str | None) -> ConversationState:
-        self.called_with = ticket_id
+    def get(self, ticket_id: str | None) -> ConversationState | None:
+        self.called_with_get = ticket_id
         return self.state
+
+    def save(self, ticket_id: str, state: ConversationState) -> None:
+        self.saved_ticket_id = ticket_id
+        self.saved_state = state
 
 
 class FakeConversationUpdater:
@@ -182,30 +192,16 @@ class FakeConversationUpdater:
         return self.new_state
 
 
-class FakeConversationStateStore:
-    def __init__(self):
-        self.saved_ticket_id = None
-        self.saved_state = None
-
-    def save(self, ticket_id: str, state: ConversationState) -> None:
-        self.saved_ticket_id = ticket_id
-        self.saved_state = state
-
-
-class FakeMemoryLoader:
-    def __init__(self, loaded_memory: LoadedMemory):
-        self.loaded_memory = loaded_memory
-        self.called_with = None
-
-    def load(self, ticket_id: str | None) -> LoadedMemory:
-        self.called_with = ticket_id
-        return self.loaded_memory
-
-
-class FakeMemoryStore:
-    def __init__(self):
+class FakeMemoryRepository:
+    def __init__(self, loaded_memory: LoadedMemory | None = None):
+        self.loaded_memory = loaded_memory or make_loaded_memory_empty()
+        self.called_with_load = None
         self.saved_ticket_id = None
         self.saved_memory = None
+
+    def load(self, ticket_id: str | None) -> LoadedMemory:
+        self.called_with_load = ticket_id
+        return self.loaded_memory
 
     def save(self, ticket_id: str, memory: ConversationMemory) -> None:
         self.saved_ticket_id = ticket_id
@@ -296,6 +292,7 @@ def test_validate_input_ticket_node_updates_ticket():
 
     assert result["ticket"].description == "My phone is overheating."
     assert validator.called_with == ticket
+    assert_node_trace(result, "validate_input_ticket")
 
 
 def test_validate_input_ticket_node_raises_without_ticket():
@@ -310,23 +307,54 @@ def test_validate_input_ticket_node_raises_without_ticket():
 # ---------------------------------------------------------------------
 
 
-def test_load_conversation_state_node_sets_previous_state():
+def test_load_conversation_state_node_sets_previous_state_when_state_exists():
     ticket = make_ticket()
     state = make_conversation_state()
-    loader = FakeConversationLoader(state)
-    node = make_load_conversation_state_node(loader)
+    repository = FakeConversationStateRepository(state)
+    node = make_load_conversation_state_node(repository)
 
     result = node({"ticket": ticket})
 
     assert result["previous_conversation_state"] == state
-    assert loader.called_with == ticket.ticket_id
+    assert repository.called_with_get == ticket.ticket_id
+    assert_node_trace(result, "load_conversation_state")
+
+
+def test_load_conversation_state_node_creates_initial_state_when_state_does_not_exist():
+    ticket = make_ticket()
+    repository = FakeConversationStateRepository(state=None)
+    node = make_load_conversation_state_node(repository)
+
+    result = node({"ticket": ticket})
+
+    previous_state = result["previous_conversation_state"]
+
+    assert previous_state.ticket_id == ticket.ticket_id
+    assert previous_state.turn_count == 0
+    assert previous_state.rag_call_count == 0
+    assert previous_state.last_turn_id is None
+    assert previous_state.status == "active"
+    assert repository.called_with_get == ticket.ticket_id
+    assert_node_trace(result, "load_conversation_state")
 
 
 def test_load_conversation_state_node_raises_without_ticket():
-    node = make_load_conversation_state_node(FakeConversationLoader(make_conversation_state()))
+    node = make_load_conversation_state_node(
+        FakeConversationStateRepository(make_conversation_state())
+    )
 
     with pytest.raises(ValueError, match="ticket is required"):
         node({})
+
+
+def test_load_conversation_state_node_raises_without_ticket_id():
+    ticket = make_ticket(ticket_id="")
+    node = make_load_conversation_state_node(
+        FakeConversationStateRepository(make_conversation_state())
+    )
+
+    with pytest.raises(ValueError, match="ticket_id is required"):
+        node({"ticket": ticket})
 
 
 # ---------------------------------------------------------------------
@@ -353,6 +381,7 @@ def test_classify_initial_route_node_sets_expected_route(conversation_state, exp
     result = node({"previous_conversation_state": conversation_state})
 
     assert result["initial_route"] == expected_route
+    assert_node_trace(result, "classify_initial_route")
 
 
 def test_classify_initial_route_node_prioritizes_closed_over_limits():
@@ -369,6 +398,7 @@ def test_classify_initial_route_node_prioritizes_closed_over_limits():
     result = node({"previous_conversation_state": state})
 
     assert result["initial_route"] == "already_closed"
+    assert_node_trace(result, "classify_initial_route")
 
 
 def test_classify_initial_route_node_prioritizes_escalated_over_limits():
@@ -385,6 +415,7 @@ def test_classify_initial_route_node_prioritizes_escalated_over_limits():
     result = node({"previous_conversation_state": state})
 
     assert result["initial_route"] == "already_escalated"
+    assert_node_trace(result, "classify_initial_route")
 
 
 def test_classify_initial_route_node_raises_without_previous_state():
@@ -406,18 +437,21 @@ def test_already_closed_response_node_returns_predefined_closing_response():
     result = already_closed_response_node({})
 
     assert isinstance(result["response"], PredefinedClosingResponse)
+    assert_node_trace(result, "already_closed_response")
 
 
 def test_already_escalated_response_node_returns_predefined_escalation_response():
     result = already_escalated_response_node({})
 
     assert isinstance(result["response"], PredefinedEscalationResponse)
+    assert_node_trace(result, "already_escalated_response")
 
 
 def test_force_escalation_response_node_returns_predefined_escalation_response():
     result = force_escalation_response_node({})
 
     assert isinstance(result["response"], PredefinedEscalationResponse)
+    assert_node_trace(result, "force_escalation_response")
 
 
 # ---------------------------------------------------------------------
@@ -447,6 +481,7 @@ def test_update_conversation_node_sets_conversation_state_after_with_response_ou
     assert updater.called_with["response"] == response
     assert updater.called_with["predefined_closing_response"] is None
     assert updater.called_with["predefined_escalation_response"] is None
+    assert_node_trace(result, "update_conversation")
 
 
 def test_update_conversation_node_sets_conversation_state_after_with_predefined_closing():
@@ -467,6 +502,7 @@ def test_update_conversation_node_sets_conversation_state_after_with_predefined_
     assert result["conversation_state_after"] == new_state
     assert updater.called_with["response"] is None
     assert updater.called_with["predefined_closing_response"] == response
+    assert_node_trace(result, "update_conversation")
 
 
 def test_update_conversation_node_sets_conversation_state_after_with_predefined_escalation():
@@ -487,6 +523,7 @@ def test_update_conversation_node_sets_conversation_state_after_with_predefined_
     assert result["conversation_state_after"] == new_state
     assert updater.called_with["response"] is None
     assert updater.called_with["predefined_escalation_response"] == response
+    assert_node_trace(result, "update_conversation")
 
 
 @pytest.mark.parametrize(
@@ -518,8 +555,8 @@ def test_update_conversation_node_raises_for_missing_required_state(state, error
 def test_save_conversation_state_node_saves_state():
     ticket = make_ticket()
     state = make_conversation_state()
-    store = FakeConversationStateStore()
-    node = make_save_conversation_state_node(store)
+    repository = FakeConversationStateRepository(state=None)
+    node = make_save_conversation_state_node(repository)
 
     result = node(
         {
@@ -528,23 +565,36 @@ def test_save_conversation_state_node_saves_state():
         }
     )
 
-    assert result == {}
-    assert store.saved_ticket_id == ticket.ticket_id
-    assert store.saved_state == state
+    assert result["nodes_executed"] == ["save_conversation_state"]
+    assert repository.saved_ticket_id == ticket.ticket_id
+    assert repository.saved_state == state
 
 
 def test_save_conversation_state_node_raises_without_ticket():
-    node = make_save_conversation_state_node(FakeConversationStateStore())
+    node = make_save_conversation_state_node(FakeConversationStateRepository(state=None))
 
     with pytest.raises(ValueError, match="ticket is required"):
         node({"conversation_state_after": make_conversation_state()})
 
 
 def test_save_conversation_state_node_raises_without_state_after():
-    node = make_save_conversation_state_node(FakeConversationStateStore())
+    node = make_save_conversation_state_node(FakeConversationStateRepository(state=None))
 
     with pytest.raises(ValueError, match="conversation_state_after is required"):
         node({"ticket": make_ticket()})
+
+
+def test_save_conversation_state_node_raises_without_ticket_id():
+    ticket = make_ticket(ticket_id="")
+    node = make_save_conversation_state_node(FakeConversationStateRepository(state=None))
+
+    with pytest.raises(ValueError, match="ticket_id is required"):
+        node(
+            {
+                "ticket": ticket,
+                "conversation_state_after": make_conversation_state(),
+            }
+        )
 
 
 # ---------------------------------------------------------------------
@@ -555,27 +605,36 @@ def test_save_conversation_state_node_raises_without_state_after():
 def test_load_memory_node_sets_previous_conversation_memory():
     ticket = make_ticket()
     loaded_memory = make_loaded_memory_with_content()
-    loader = FakeMemoryLoader(loaded_memory)
-    node = make_load_memory_node(loader)
+    repository = FakeMemoryRepository(loaded_memory)
+    node = make_load_memory_node(repository)
 
     result = node({"ticket": ticket})
 
     assert result["previous_conversation_memory"] == loaded_memory
-    assert loader.called_with == ticket.ticket_id
+    assert repository.called_with_load == ticket.ticket_id
+    assert_node_trace(result, "load_memory")
 
 
 def test_load_memory_node_raises_without_ticket():
-    node = make_load_memory_node(FakeMemoryLoader(make_loaded_memory_empty()))
+    node = make_load_memory_node(FakeMemoryRepository(make_loaded_memory_empty()))
 
     with pytest.raises(ValueError, match="ticket is required"):
         node({})
 
 
+def test_load_memory_node_raises_without_ticket_id():
+    ticket = make_ticket(ticket_id="")
+    node = make_load_memory_node(FakeMemoryRepository(make_loaded_memory_empty()))
+
+    with pytest.raises(ValueError, match="ticket_id is required"):
+        node({"ticket": ticket})
+
+
 def test_save_conversation_memory_node_saves_memory():
     ticket = make_ticket()
     memory = ConversationMemory(memory="Updated memory.")
-    store = FakeMemoryStore()
-    node = make_save_conversation_memory_node(store)
+    repository = FakeMemoryRepository()
+    node = make_save_conversation_memory_node(repository)
 
     result = node(
         {
@@ -584,23 +643,36 @@ def test_save_conversation_memory_node_saves_memory():
         }
     )
 
-    assert result == {}
-    assert store.saved_ticket_id == ticket.ticket_id
-    assert store.saved_memory == memory
+    assert result["nodes_executed"] == ["save_conversation_memory"]
+    assert repository.saved_ticket_id == ticket.ticket_id
+    assert repository.saved_memory == memory
 
 
 def test_save_conversation_memory_node_raises_without_ticket():
-    node = make_save_conversation_memory_node(FakeMemoryStore())
+    node = make_save_conversation_memory_node(FakeMemoryRepository())
 
     with pytest.raises(ValueError, match="ticket is required"):
         node({"memory_after": ConversationMemory(memory="Updated memory.")})
 
 
 def test_save_conversation_memory_node_raises_without_memory_after():
-    node = make_save_conversation_memory_node(FakeMemoryStore())
+    node = make_save_conversation_memory_node(FakeMemoryRepository())
 
     with pytest.raises(ValueError, match="new memory is required"):
         node({"ticket": make_ticket()})
+
+
+def test_save_conversation_memory_node_raises_without_ticket_id():
+    ticket = make_ticket(ticket_id="")
+    node = make_save_conversation_memory_node(FakeMemoryRepository())
+
+    with pytest.raises(ValueError, match="ticket_id is required"):
+        node(
+            {
+                "ticket": ticket,
+                "memory_after": ConversationMemory(memory="Updated memory."),
+            }
+        )
 
 
 # ---------------------------------------------------------------------
@@ -623,6 +695,7 @@ def test_generate_response_output_node_sets_response_with_memory():
 
     assert result["response"] == response
     assert agent.called_with.memory_context == "The user previously reported overheating."
+    assert_node_trace(result, "generate_response_output")
 
 
 def test_generate_response_output_node_sets_response_without_memory():
@@ -640,6 +713,7 @@ def test_generate_response_output_node_sets_response_without_memory():
 
     assert result["response"] == response
     assert agent.called_with.memory_context is None
+    assert_node_trace(result, "generate_response_output")
 
 
 def test_generate_response_output_node_raises_without_ticket():
@@ -678,6 +752,7 @@ def test_generate_new_memory_node_sets_memory_after():
 
     assert result["memory_after"] == new_memory
     assert memory_agent.called_with.response == response
+    assert_node_trace(result, "generate_new_memory")
 
 
 def test_generate_new_memory_node_uses_none_previous_memory_when_no_memory_exists():
@@ -696,6 +771,7 @@ def test_generate_new_memory_node_uses_none_previous_memory_when_no_memory_exist
 
     assert result["memory_after"] == new_memory
     assert memory_agent.called_with.previous_memory is None
+    assert_node_trace(result, "generate_new_memory")
 
 
 def test_generate_new_memory_node_raises_without_response_output():
@@ -730,6 +806,7 @@ def test_retrieval_policy_decision_node_sets_decision_with_memory():
 
     assert result["retrieval_decision"] == decision
     assert policy.called_with.memory_context == "The user previously reported overheating."
+    assert_node_trace(result, "retrieval_policy_decision")
 
 
 def test_retrieval_policy_decision_node_sets_decision_without_memory():
@@ -746,6 +823,7 @@ def test_retrieval_policy_decision_node_sets_decision_without_memory():
 
     assert result["retrieval_decision"] == decision
     assert policy.called_with.memory_context is None
+    assert_node_trace(result, "retrieval_policy_decision")
 
 
 # ---------------------------------------------------------------------
@@ -768,6 +846,7 @@ def test_rewrite_query_node_sets_query_rewriter_output():
     assert result["query_rewriter_output"] == output
     assert agent.called_with.current_description == "My phone is overheating when charging."
     assert agent.called_with.memory_context == "The user previously reported overheating."
+    assert_node_trace(result, "rewrite_query")
 
 
 def test_rewrite_query_node_raises_without_memory_content():
@@ -805,6 +884,7 @@ def test_retrieve_results_tool_uses_rewritten_query_when_available():
 
     assert result["retrieval_output"] == retrieval_output
     assert tool.called_with.query == "optimized overheating query"
+    assert_node_trace(result, "retrieve_results_tool")
 
 
 def test_retrieve_results_tool_uses_ticket_description_without_rewritten_query():
@@ -822,6 +902,7 @@ def test_retrieve_results_tool_uses_ticket_description_without_rewritten_query()
 
     assert result["retrieval_output"] == retrieval_output
     assert tool.called_with.query == ticket.description
+    assert_node_trace(result, "retrieve_results_tool")
 
 
 def test_retrieve_results_tool_raises_without_retrieval_decision():
@@ -846,6 +927,7 @@ def test_build_context_node_sets_built_context():
 
     assert result["built_context"] == context
     assert builder.called_with == retrieval_output.results
+    assert_node_trace(result, "build_context")
 
 
 def test_build_context_node_raises_without_retrieval_output():
@@ -889,6 +971,7 @@ def test_build_summary_node_sets_summary_with_memory():
 
     assert result["summary"] == summary
     assert agent.called_with.memory_context == "The user previously reported overheating."
+    assert_node_trace(result, "build_summary")
 
 
 def test_build_summary_node_sets_summary_without_memory():
@@ -906,6 +989,7 @@ def test_build_summary_node_sets_summary_without_memory():
 
     assert result["summary"] == summary
     assert agent.called_with.memory_context is None
+    assert_node_trace(result, "build_summary")
 
 
 def test_build_summary_node_raises_without_built_context():

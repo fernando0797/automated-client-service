@@ -4,10 +4,7 @@ from typing import Callable
 
 from src.graph.graph_state import SupportGraphState, InitialRoute
 from src.validation.input_validator import InputValidator
-from src.conversation.conversation_state_loader import ConversationStateLoader
 from src.conversation.conversation_updater import ConversationUpdater
-from src.conversation.conversation_state_store import InMemoryConversationStateStore
-from src.memory.memory_loader import MemoryLoader
 from src.agents.response_agent import ResponseAgent
 from src.agents.memory_agent import MemoryAgent
 from src.rag.retrieval_policy import RetrievalPolicy
@@ -15,7 +12,9 @@ from src.agents.query_rewriter_agent import QueryRewriterAgent
 from src.tools.retriever_tool import RetrieverTool
 from src.rag.context_builder import ContextBuilder
 from src.agents.summary_agent import SummaryAgent
-from src.memory.memory_store import InMemoryConversationStore
+from src.persistence.repositories.conversation_state_repository import SQLConversationStateStore
+from src.persistence.repositories.conversation_memory_repository import SQLConversationMemoryStore
+from src.core.conversation_state_models import ConversationState
 
 from src.core.default_models import PredefinedClosingResponse, PredefinedEscalationResponse
 from src.core.response_models import ResponseOutput, ResponseInput
@@ -25,6 +24,10 @@ from src.core.query_rewriter_models import QueryRewriterInput
 from src.core.retrieval_tool_models import RetrievalToolInput
 from src.core.summary_models import SummaryInput
 from src.core.config import DEFAULT_ALREADY_ESCALATED_RESPONSE, DEFAULT_CLOSED_TICKET_RESPONSE, DEFAULT_FORCE_ESCALATION_RESPONSE, DEFAULT_RETRIEVAL_K
+
+
+def append_node(state: SupportGraphState, node_name: str) -> list[str]:
+    return [*state.get("nodes_executed", []), node_name]
 
 
 def make_validate_input_ticket_node(input_validator: InputValidator) -> Callable[[SupportGraphState], dict]:
@@ -37,12 +40,15 @@ def make_validate_input_ticket_node(input_validator: InputValidator) -> Callable
 
         validated_ticket = input_validator.validate(ticket=ticket)
 
-        return {"ticket": validated_ticket}
+        return {
+            "ticket": validated_ticket,
+            "nodes_executed": append_node(state, "validate_input_ticket"),
+        }
 
     return validate_input_ticket_node
 
 
-def make_load_conversation_state_node(conversation_loader: ConversationStateLoader) -> Callable[[SupportGraphState], dict]:
+def make_load_conversation_state_node(conversation_state_store: SQLConversationStateStore) -> Callable[[SupportGraphState], dict]:
 
     def load_conversation_state_node(state: SupportGraphState) -> dict:
         ticket = state.get("ticket")
@@ -50,9 +56,24 @@ def make_load_conversation_state_node(conversation_loader: ConversationStateLoad
         if ticket is None:
             raise ValueError("ticket is required before loading previous conversation state")
 
-        previous_conversation_state = conversation_loader.load(ticket.ticket_id)
+        if ticket.ticket_id is None or not ticket.ticket_id.strip():
+            raise ValueError("ticket_id is required before loading previous conversation state")
 
-        return {"previous_conversation_state": previous_conversation_state}
+        previous_conversation_state = conversation_state_store.get(ticket.ticket_id)
+
+        if previous_conversation_state is None:
+            previous_conversation_state = ConversationState(
+                ticket_id=ticket.ticket_id,
+                turn_count=0,
+                rag_call_count=0,
+                last_turn_id=None,
+                status="active",
+            )
+
+        return {
+            "previous_conversation_state": previous_conversation_state,
+            "nodes_executed": append_node(state, "load_conversation_state"),
+        }
 
     return load_conversation_state_node
 
@@ -80,21 +101,33 @@ def make_classify_initial_route_node(*, max_turns_per_ticket: int, max_rag_calls
         else:
             initial_route = "active"
 
-        return {"initial_route": initial_route}
+        return {
+            "initial_route": initial_route,
+            "nodes_executed": append_node(state, "classify_initial_route"),
+        }
 
     return classify_initial_route_node
 
 
 def already_closed_response_node(state: SupportGraphState) -> dict:
-    return {"response": PredefinedClosingResponse(response=DEFAULT_CLOSED_TICKET_RESPONSE)}
+    return {
+        "response": PredefinedClosingResponse(response=DEFAULT_CLOSED_TICKET_RESPONSE),
+        "nodes_executed": append_node(state, "already_closed_response"),
+    }
 
 
 def already_escalated_response_node(state: SupportGraphState) -> dict:
-    return {"response": PredefinedEscalationResponse(response=DEFAULT_ALREADY_ESCALATED_RESPONSE)}
+    return {
+        "response": PredefinedEscalationResponse(response=DEFAULT_ALREADY_ESCALATED_RESPONSE),
+        "nodes_executed": append_node(state, "already_escalated_response"),
+    }
 
 
 def force_escalation_response_node(state: SupportGraphState) -> dict:
-    return {"response": PredefinedEscalationResponse(response=DEFAULT_FORCE_ESCALATION_RESPONSE)}
+    return {
+        "response": PredefinedEscalationResponse(response=DEFAULT_FORCE_ESCALATION_RESPONSE),
+        "nodes_executed": append_node(state, "force_escalation_response"),
+    }
 
 
 def make_update_conversation_node(conversation_updater: ConversationUpdater) -> Callable[[SupportGraphState], dict]:
@@ -122,12 +155,15 @@ def make_update_conversation_node(conversation_updater: ConversationUpdater) -> 
         new_conversation_state = conversation_updater.update_state(previous_state=previous_conversation_state, ticket=ticket, retrieval_decision=retrieval_decision,
                                                                    response=response, predefined_closing_response=predefined_closing_response,
                                                                    predefined_escalation_response=predefined_escalation_response)
-        return {"conversation_state_after": new_conversation_state}
+        return {
+            "conversation_state_after": new_conversation_state,
+            "nodes_executed": append_node(state, "update_conversation"),
+        }
 
     return update_conversation_node
 
 
-def make_save_conversation_state_node(conversation_state_store: InMemoryConversationStateStore) -> Callable[[SupportGraphState], dict]:
+def make_save_conversation_state_node(conversation_state_store: SQLConversationStateStore) -> Callable[[SupportGraphState], dict]:
 
     def save_conversation_state_node(state: SupportGraphState) -> dict:
         ticket = state.get("ticket")
@@ -136,36 +172,42 @@ def make_save_conversation_state_node(conversation_state_store: InMemoryConversa
         if ticket is None:
             raise ValueError("ticket is required before saving conversation state")
 
+        if ticket.ticket_id is None or not ticket.ticket_id.strip():
+            raise ValueError("ticket_id is required before saving conversation state")
+
         if conversation_state is None:
             raise ValueError("conversation_state_after is required before saving state")
 
         conversation_state_store.save(ticket_id=ticket.ticket_id, state=conversation_state)
 
-        return {}
+        return {"nodes_executed": append_node(state, "save_conversation_state")}
 
     return save_conversation_state_node
 
 
-def make_save_conversation_memory_node(memory_store: InMemoryConversationStore) -> Callable[[SupportGraphState], dict]:
+def make_save_conversation_memory_node(memory_store: SQLConversationMemoryStore) -> Callable[[SupportGraphState], dict]:
 
     def save_conversation_memory_node(state: SupportGraphState) -> dict:
         ticket = state.get("ticket")
         memory_after = state.get("memory_after")
 
         if ticket is None:
-            raise ValueError("ticket is required before saving conversation state")
+            raise ValueError("ticket is required before saving conversation memory")
+
+        if ticket.ticket_id is None or not ticket.ticket_id.strip():
+            raise ValueError("ticket_id is required before saving conversation memory")
 
         if memory_after is None:
             raise ValueError("a new memory is required before saving the memory")
 
         memory_store.save(ticket_id=ticket.ticket_id, memory=memory_after)
 
-        return {}
+        return {"nodes_executed": append_node(state, "save_conversation_memory")}
 
     return save_conversation_memory_node
 
 
-def make_load_memory_node(memory_loader: MemoryLoader) -> Callable[[SupportGraphState], dict]:
+def make_load_memory_node(memory_store: SQLConversationMemoryStore) -> Callable[[SupportGraphState], dict]:
 
     def load_memory_node(state: SupportGraphState) -> dict:
         ticket = state.get("ticket")
@@ -173,9 +215,13 @@ def make_load_memory_node(memory_loader: MemoryLoader) -> Callable[[SupportGraph
         if ticket is None:
             raise ValueError("ticket is required before loading previous memory")
 
-        loaded_memory = memory_loader.load(ticket_id=ticket.ticket_id)
+        if ticket.ticket_id is None or not ticket.ticket_id.strip():
+            raise ValueError("ticket_id is required before loading previous memory")
 
-        return {"previous_conversation_memory": loaded_memory}
+        loaded_memory = memory_store.load(ticket_id=ticket.ticket_id)
+
+        return {"previous_conversation_memory": loaded_memory,
+                "nodes_executed": append_node(state, "load_memory")}
 
     return load_memory_node
 
@@ -197,7 +243,10 @@ def make_generate_response_output_node(response_agent: ResponseAgent) -> Callabl
         response = response_agent.generate_response(response_input=ResponseInput(
             ticket=ticket, summary=summary, memory_context=memory_text))
 
-        return {"response": response}
+        return {
+            "response": response,
+            "nodes_executed": append_node(state, "generate_response_output"),
+        }
 
     return generate_response_output_node
 
@@ -224,7 +273,10 @@ def make_generate_new_memory_node(memory_agent: MemoryAgent) -> Callable[[Suppor
         new_conversation_memory = memory_agent.update_memory(memory_update_input=MemoryUpdateInput(
             ticket=ticket, previous_memory=previous_memory, summary=summary, response=response))
 
-        return {"memory_after": new_conversation_memory}
+        return {
+            "memory_after": new_conversation_memory,
+            "nodes_executed": append_node(state, "generate_new_memory"),
+        }
 
     return generate_new_memory_node
 
@@ -245,7 +297,10 @@ def make_retrieval_policy_decision_node(retrieval_policy: RetrievalPolicy) -> Ca
 
         decision = retrieval_policy.decide(policy_input=RetrievalPolicyInput(ticket=ticket, memory_context=memory_text))
 
-        return {"retrieval_decision": decision}
+        return {
+            "retrieval_decision": decision,
+            "nodes_executed": append_node(state, "retrieval_policy_decision"),
+        }
 
     return retrieval_policy_decision_node
 
@@ -271,7 +326,10 @@ def make_rewrite_query_node(query_rewriter_agent: QueryRewriterAgent) -> Callabl
         query_rewriter_output = query_rewriter_agent.rewrite(query_rewriter_input=QueryRewriterInput(
             current_description=current_description, memory_context=memory_text))
 
-        return {"query_rewriter_output": query_rewriter_output}
+        return {
+            "query_rewriter_output": query_rewriter_output,
+            "nodes_executed": append_node(state, "rewrite_query"),
+        }
 
     return rewrite_query_node
 
@@ -297,7 +355,10 @@ def make_retrieve_results_tool(retriever_tool: RetrieverTool) -> Callable[[Suppo
         retrieval_output = retriever_tool.invoke(retrieval_tool_input=RetrievalToolInput(
             ticket=ticket, decision=retrieval_decision, query=query, k=DEFAULT_RETRIEVAL_K))
 
-        return {"retrieval_output": retrieval_output}
+        return {
+            "retrieval_output": retrieval_output,
+            "nodes_executed": append_node(state, "retrieve_results_tool"),
+        }
 
     return retrieve_results_tool
 
@@ -317,7 +378,10 @@ def make_build_context_node(context_builder: ContextBuilder) -> Callable[[Suppor
 
         built_context = context_builder.build(retrieval_results=retrieval_results)
 
-        return {"built_context": built_context}
+        return {
+            "built_context": built_context,
+            "nodes_executed": append_node(state, "build_context"),
+        }
 
     return build_context_node
 
@@ -343,6 +407,9 @@ def make_build_summary_node(summary_agent: SummaryAgent) -> Callable[[SupportGra
         summary = summary_agent.summarize(summary_input=SummaryInput(
             ticket=ticket, built_context=built_context, memory_context=memory_text))
 
-        return {"summary": summary}
+        return {
+            "summary": summary,
+            "nodes_executed": append_node(state, "build_summary"),
+        }
 
     return build_summary_node

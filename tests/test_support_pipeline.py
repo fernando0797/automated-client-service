@@ -371,8 +371,16 @@ def test_pipeline_already_closed_ticket_skips_memory_retrieval_and_response_agen
     output = pipeline.run_turn(ticket)
 
     assert input_validator.calls == 1
+    assert output.initial_route == "already_closed"
     assert isinstance(output.response, PredefinedClosingResponse)
     assert output.conversation_state_after.status == "closed"
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "already_closed_response",
+    ]
 
     assert output.retrieval_decision is None
     assert output.previous_conversation_memory is None
@@ -389,6 +397,7 @@ def test_pipeline_already_closed_ticket_skips_memory_retrieval_and_response_agen
     saved_state = conversation_state_store.get("ticket_001")
     assert saved_state is not None
     assert saved_state.status == "closed"
+    assert output.conversation_state_after == output.previous_conversation_state
 
 
 def test_pipeline_already_escalated_ticket_skips_memory_retrieval_and_response_agent(
@@ -431,8 +440,16 @@ def test_pipeline_already_escalated_ticket_skips_memory_retrieval_and_response_a
 
     output = pipeline.run_turn(ticket)
 
+    assert output.initial_route == "already_escalated"
     assert isinstance(output.response, PredefinedEscalationResponse)
     assert output.conversation_state_after.status == "escalated"
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "already_escalated_response",
+    ]
 
     assert output.retrieval_decision is None
     assert output.previous_conversation_memory is None
@@ -445,6 +462,7 @@ def test_pipeline_already_escalated_ticket_skips_memory_retrieval_and_response_a
     assert summary_agent.calls == 0
     assert response_agent.calls == 0
     assert memory_agent.calls == 0
+    assert output.conversation_state_after == output.previous_conversation_state
 
 
 def test_pipeline_escalates_when_max_turns_reached_and_skips_flow(
@@ -491,8 +509,18 @@ def test_pipeline_escalates_when_max_turns_reached_and_skips_flow(
 
     output = pipeline.run_turn(ticket)
 
+    assert output.initial_route == "force_escalation"
     assert isinstance(output.response, PredefinedEscalationResponse)
     assert output.conversation_state_after.status == "escalated"
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "force_escalation_response",
+        "update_conversation",
+        "save_conversation_state",
+    ]
 
     assert retrieval_policy.calls == 0
     assert query_rewriter_agent.calls == 0
@@ -585,6 +613,7 @@ def test_pipeline_max_rag_calls_loads_memory_and_skips_retrieval_policy(
 
     output = pipeline.run_turn(ticket)
 
+    assert output.initial_route == "rag_limit_reached"
     assert output.retrieval_decision is None
     assert output.previous_conversation_memory is not None
     assert output.previous_conversation_memory.memory == (
@@ -592,6 +621,18 @@ def test_pipeline_max_rag_calls_loads_memory_and_skips_retrieval_policy(
     )
     assert isinstance(output.response, ResponseOutput)
     assert output.memory_after is not None
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
 
     assert retrieval_policy.calls == 0
     assert query_rewriter_agent.calls == 0
@@ -662,11 +703,25 @@ def test_pipeline_retrieval_policy_no_rag_calls_response_and_memory_only(
 
     output = pipeline.run_turn(ticket)
 
+    assert output.initial_route == "active"
     assert output.retrieval_decision == retrieval_decision
     assert output.previous_conversation_memory is not None
     assert output.previous_conversation_memory.memory == "Previous assistant answer."
     assert isinstance(output.response, ResponseOutput)
     assert output.memory_after is not None
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
 
     assert retrieval_policy.calls == 1
     assert query_rewriter_agent.calls == 0
@@ -725,6 +780,7 @@ def test_pipeline_initial_rag_skips_query_rewriter_and_summarizes_results(
 
     output = pipeline.run_turn(ticket)
 
+    assert output.initial_route == "active"
     assert output.retrieval_decision == retrieval_decision
     assert output.query_rewriter_output is None
     assert output.retrieval_output is not None
@@ -732,6 +788,22 @@ def test_pipeline_initial_rag_skips_query_rewriter_and_summarizes_results(
     assert output.summary is not None
     assert isinstance(output.response, ResponseOutput)
     assert output.memory_after is not None
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "retrieve_results_tool",
+        "build_context",
+        "build_summary",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
 
     assert retrieval_policy.calls == 1
     assert query_rewriter_agent.calls == 0
@@ -809,10 +881,28 @@ def test_pipeline_later_rag_with_memory_calls_query_rewriter(
 
     output = pipeline.run_turn(ticket)
 
+    assert output.initial_route == "active"
     assert output.query_rewriter_output is not None
     assert output.query_rewriter_output.optimized_query == "optimized semantic query"
     assert output.retrieval_output is not None
     assert output.summary is not None
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "rewrite_query",
+        "retrieve_results_tool",
+        "build_context",
+        "build_summary",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
 
     assert retrieval_policy.calls == 1
     assert query_rewriter_agent.calls == 1
@@ -883,8 +973,25 @@ def test_pipeline_later_rag_without_memory_skips_query_rewriter(
 
     output = pipeline.run_turn(ticket)
 
+    assert output.initial_route == "active"
     assert output.query_rewriter_output is None
     assert retriever_tool.last_input.query is None
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "retrieve_results_tool",
+        "build_context",
+        "build_summary",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
 
     assert query_rewriter_agent.calls == 0
     assert retriever_tool.calls == 1
@@ -938,11 +1045,26 @@ def test_pipeline_rag_with_no_results_skips_context_builder_and_summary_agent(
 
     output = pipeline.run_turn(ticket)
 
+    assert output.initial_route == "active"
     assert output.retrieval_output is not None
     assert output.retrieval_output.results == []
     assert output.built_context is None
     assert output.summary is None
     assert isinstance(output.response, ResponseOutput)
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "retrieve_results_tool",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
 
     assert retrieval_policy.calls == 1
     assert query_rewriter_agent.calls == 0
@@ -1005,10 +1127,24 @@ def test_pipeline_response_agent_escalation_updates_state_to_escalated(
 
     output = pipeline.run_turn(ticket)
 
+    assert output.initial_route == "active"
     assert isinstance(output.response, ResponseOutput)
     assert output.response.requires_escalation is True
     assert output.response.should_close is False
     assert output.conversation_state_after.status == "escalated"
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
 
     assert response_agent.calls == 1
     assert memory_agent.calls == 1
@@ -1066,10 +1202,24 @@ def test_pipeline_response_agent_closing_updates_state_to_closed(
 
     output = pipeline.run_turn(ticket)
 
+    assert output.initial_route == "active"
     assert isinstance(output.response, ResponseOutput)
     assert output.response.requires_escalation is False
     assert output.response.should_close is True
     assert output.conversation_state_after.status == "closed"
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
 
     assert response_agent.calls == 1
     assert memory_agent.calls == 1
@@ -1126,7 +1276,21 @@ def test_pipeline_does_not_increment_turn_count_for_repeated_turn_id(
 
     output = pipeline.run_turn(ticket)
 
+    assert output.initial_route == "active"
     assert output.conversation_state_after.turn_count == 1
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
 
     saved_state = conversation_state_store.get("ticket_001")
     assert saved_state is not None
@@ -1176,8 +1340,23 @@ def test_pipeline_does_not_increment_rag_count_for_repeated_turn_id(
 
     output = pipeline.run_turn(ticket)
 
+    assert output.initial_route == "active"
     assert output.conversation_state_after.turn_count == 1
     assert output.conversation_state_after.rag_call_count == 1
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "retrieve_results_tool",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
 
     saved_state = conversation_state_store.get("ticket_001")
     assert saved_state is not None
@@ -1215,8 +1394,22 @@ def test_pipeline_persists_memory_for_next_turn(
 
     output = pipeline.run_turn(ticket)
 
+    assert output.initial_route == "active"
     assert output.memory_after is not None
     assert output.memory_after.memory == "Updated memory."
+
+    assert output.nodes_executed == [
+        "validate_input_ticket",
+        "load_conversation_state",
+        "classify_initial_route",
+        "load_memory",
+        "retrieval_policy_decision",
+        "generate_response_output",
+        "generate_new_memory",
+        "save_conversation_memory",
+        "update_conversation",
+        "save_conversation_state",
+    ]
 
     saved_memory = memory_store.get("ticket_001")
     assert saved_memory is not None

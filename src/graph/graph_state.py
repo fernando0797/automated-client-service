@@ -40,4 +40,4 @@ class SupportGraphState(TypedDict, total=False):
 
     response: ResponseOutput | PredefinedClosingResponse | PredefinedEscalationResponse
 
-    error: Optional[str]
+    nodes_executed: list[str]
