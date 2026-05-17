@@ -1,6 +1,6 @@
-# 🧠 Helpdesk AI Triage System
+# Helpdesk AI Triage System
 
-## 📌 Overview
+## Overview
 
 This project implements a multi-agent system based on LLMs to automate customer support ticket management.
 
@@ -14,7 +14,7 @@ The system is capable of:
 
 ---
 
-## 🧱 Architecture
+## Architecture
 
 The system follows a modular pipeline:
 
