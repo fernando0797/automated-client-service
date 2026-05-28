@@ -31,6 +31,10 @@ Rules:
 - If current message contradicts memory, prioritize current message.
 - Optimize for vector search.
 - Output in English.
+- The optimized_query MUST be under 300 characters.
+- Return a concise search query, not a full summary.
+- Do not include all previous troubleshooting steps.
+- Focus only on the user's current unresolved issue.
 """
 
         human_prompt = f"""

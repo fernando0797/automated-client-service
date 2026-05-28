@@ -14,7 +14,7 @@ class QueryRewriterInput(BaseModel):
 
 
 class QueryRewriterOutput(BaseModel):
-    optimized_query: str = Field(..., min_length=1, max_length=300)
+    optimized_query: str = Field(..., min_length=1, max_length=500)
 
     @field_validator("optimized_query")
     @classmethod
