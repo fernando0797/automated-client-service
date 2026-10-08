@@ -1,0 +1,41 @@
+services:
+  db_postgres:
+    image: postgres:16
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    ports:
+      - "${POSTGRES_PUBLIC_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    environment:
+      POSTGRES_HOST: db_postgres
+      POSTGRES_PORT: 5432
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+
+  frontend:
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

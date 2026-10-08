@@ -1,137 +1,45 @@
-# Helpdesk AI Triage System
+# TFG - Automated Client Service
 
-## Overview
+Monorepo con el backend de soporte automatizado y su interfaz web.
 
-This project implements a multi-agent system based on LLMs to automate customer support ticket management.
+## Estructura
 
-The system is capable of:
-
-* Classifying tickets (domain, subdomain, product, priority)
-* Interpreting user problems and intent
-* Retrieving relevant knowledge (RAG)
-* Generating structured summaries
-* Producing clear and actionable responses
-
----
-
-## Architecture
-
-The system follows a modular pipeline:
-
-```
-Input Ticket
-   ↓
-Router Agent
-   ↓
-Domain Agent
-   ↓
-RAG Retrieval
-   ↓
-Summary Agent
-   ↓
-Response Agent
-   ↓
-Output
+```text
+backend/          API FastAPI, agentes, RAG, PostgreSQL y migraciones
+frontend/         Aplicación web TanStack/Vite
+datas/            Datos locales; no se versionan
+docker-compose.yml Entorno completo para desarrollo local
 ```
 
-Each component has a well-defined responsibility, enabling scalability and traceability.
+Cada aplicación tiene su propio Dockerfile, dependencias y configuración. La
+carpeta `backend/` también incluye un `docker-compose.yml` independiente para
+poder copiarla o desplegarla por separado en una instancia EC2.
 
----
+## Arranque local del proyecto completo
 
-## 🗂️ Project Structure
+1. Copia `backend/.env.example` como `backend/.env`.
+2. Sustituye los valores de ejemplo, especialmente `GOOGLE_API_KEY` y
+   `POSTGRES_PASSWORD`.
+3. Si el frontend no debe usar `http://localhost:8000`, copia `.env.example`
+   como `.env` y cambia `VITE_API_URL`.
+4. Ejecuta:
 
-```
-project/
-│
-├── data/
-│   ├── customer_support_tickets.csv
-│   └── tickets.db
-│
-├── knowledge/
-│   ├── domains/
-│   ├── subdomains/
-│   ├── products/
-│   ├── cross/
-│   ├── taxonomies/
-│   └── templates/
-│
-├── src/
-│   ├── agents/
-│   ├── rag/
-│   ├── db/
-│   ├── utils/
-│   └── llm/
-│
-├── main.py
-├── requirements.txt
-├── .env
-└── README.md
+```bash
+docker compose up --build
 ```
 
----
+Servicios locales:
 
-## ⚙️ Setup
+- Frontend: http://localhost:3000
+- Backend: http://localhost:8000
+- Documentación de la API: http://localhost:8000/docs
+- Adminer: http://localhost:8080
 
-### 1. Create virtual environment
+## Configuración sensible
 
-```
-python -m venv .venv
-```
+Los archivos `.env` y `.env.local` están excluidos de Git. Los archivos
+`.env.example` documentan las variables necesarias y nunca deben contener
+credenciales reales.
 
-### 2. Activate environment
-
-```
-# Windows
-.venv\Scripts\activate
-
-# Mac/Linux
-source .venv/bin/activate
-```
-
-### 3. Install dependencies
-
-```
-pip install -r requirements.txt
-```
-
----
-
-## 🔐 Environment Variables
-
-Create a `.env` file in the root directory:
-
-```
-OPENAI_API_KEY=your_key_here
-HF_API_KEY=your_key_here
-```
-
----
-
-## 📦 Dependency Management
-
-To update dependencies:
-
-```
-pip freeze > requirements.txt
-```
-
-This stores an exact snapshot of the current environment.
-
----
-
-## 🚀 Project Status
-
-🚧 In development
-
-Next steps:
-
-* Implement Router Agent
-* Integrate hybrid RAG (metadata + semantic search)
-* Orchestrate agents using LangGraph
-* Add evaluation and logging
-
----
-
-## 🧠 Goal
-
-Build a scalable and modular system that simulates human-like decision-making in customer support workflows.
+Consulta `backend/README.md` para ejecutar pruebas o desplegar únicamente el
+backend en EC2.
