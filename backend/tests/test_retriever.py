@@ -1,13 +1,13 @@
 import pytest
 
+from src.core.config import KNOWLEDGE_PATH
 from src.core.models import KnowledgeChunk, RetrievalResult
 from src.core.request_models import Ticket
-from src.core.config import KNOWLEDGE_PATH
-from src.rag.loader import KnowledgeLoader
 from src.rag.chunking import Chunker
 from src.rag.embeddings import Embedder
-from src.rag.vector_store import VectorStore
+from src.rag.loader import KnowledgeLoader
 from src.rag.retriever import Retriever
+from src.rag.vector_store import VectorStore
 
 
 @pytest.fixture(scope="module")

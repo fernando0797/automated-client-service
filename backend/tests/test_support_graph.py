@@ -4,11 +4,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-import pytest
-
 from src.core.context_models import BuiltContext
 from src.core.conversation_state_models import ConversationState
-from src.core.default_models import PredefinedClosingResponse, PredefinedEscalationResponse
+from src.core.default_models import (
+    PredefinedClosingResponse,
+    PredefinedEscalationResponse,
+)
 from src.core.memory_models import ConversationMemory, LoadedMemory
 from src.core.query_rewriter_models import QueryRewriterOutput
 from src.core.request_models import Ticket
@@ -17,7 +18,6 @@ from src.core.retrieval_policy_models import RetrievalPolicyDecision
 from src.core.retrieval_tool_models import RetrievalToolOutput
 from src.core.summary_models import SummaryOutput
 from src.graph.support_graph import build_support_graph
-
 
 # ---------------------------------------------------------------------
 # Helpers
@@ -201,9 +201,7 @@ class FakeConversationUpdater:
 
         if predefined_closing_response is not None:
             status = "closed"
-        elif predefined_escalation_response is not None:
-            status = "escalated"
-        elif response is not None and response.requires_escalation:
+        elif predefined_escalation_response is not None or response is not None and response.requires_escalation:
             status = "escalated"
         elif response is not None and response.should_close:
             status = "closed"

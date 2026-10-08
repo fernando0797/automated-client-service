@@ -1,13 +1,14 @@
 from dataclasses import dataclass
+from typing import Any
+
 from pydantic import BaseModel
-from typing import Any, Dict
 
 
 @dataclass
 class KnowledgeDocument:
     doc_id: str
     content: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
     @property
     def type(self) -> str:
@@ -19,7 +20,7 @@ class KnowledgeChunk:
     chunk_id: str
     parent_doc_id: str
     content: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
     @property
     def type(self) -> str:

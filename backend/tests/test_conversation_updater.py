@@ -14,7 +14,6 @@ from src.core.request_models import Ticket
 from src.core.response_models import ResponseOutput
 from src.core.retrieval_policy_models import RetrievalPolicyDecision
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================

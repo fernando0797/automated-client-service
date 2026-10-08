@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from src.core.conversation_state_models import ConversationState
 from src.conversation.conversation_state_store import InMemoryConversationStateStore
+from src.core.conversation_state_models import ConversationState
 
 
 class ConversationStateLoader:

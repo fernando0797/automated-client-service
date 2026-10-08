@@ -13,9 +13,8 @@ from src.core.memory_models import (
     MemoryUpdateInput,
 )
 from src.core.request_models import Ticket
-from src.core.summary_models import SummaryOutput
 from src.core.response_models import ResponseOutput
-
+from src.core.summary_models import SummaryOutput
 
 USE_DEFAULT_SUMMARY = object()
 

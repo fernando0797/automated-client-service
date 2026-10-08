@@ -7,7 +7,10 @@ import pytest
 
 from src.core.context_models import BuiltContext
 from src.core.conversation_state_models import ConversationState
-from src.core.default_models import PredefinedClosingResponse, PredefinedEscalationResponse
+from src.core.default_models import (
+    PredefinedClosingResponse,
+    PredefinedEscalationResponse,
+)
 from src.core.memory_models import ConversationMemory, LoadedMemory
 from src.core.query_rewriter_models import QueryRewriterOutput
 from src.core.request_models import Ticket
@@ -34,7 +37,6 @@ from src.graph.nodes import (
     make_update_conversation_node,
     make_validate_input_ticket_node,
 )
-
 
 # ---------------------------------------------------------------------
 # Helpers
@@ -777,7 +779,7 @@ def test_generate_new_memory_node_uses_none_previous_memory_when_no_memory_exist
 def test_generate_new_memory_node_raises_without_response_output():
     node = make_generate_new_memory_node(FakeMemoryAgent(ConversationMemory(memory="x")))
 
-    with pytest.raises(ValueError, match="ResponseOutput"):
+    with pytest.raises(TypeError, match="ResponseOutput"):
         node(
             {
                 "ticket": make_ticket(),

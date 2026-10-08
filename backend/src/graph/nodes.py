@@ -1,29 +1,40 @@
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
-from src.graph.graph_state import SupportGraphState, InitialRoute
-from src.validation.input_validator import InputValidator
-from src.conversation.conversation_updater import ConversationUpdater
-from src.agents.response_agent import ResponseAgent
 from src.agents.memory_agent import MemoryAgent
-from src.rag.retrieval_policy import RetrievalPolicy
 from src.agents.query_rewriter_agent import QueryRewriterAgent
-from src.tools.retriever_tool import RetrieverTool
-from src.rag.context_builder import ContextBuilder
+from src.agents.response_agent import ResponseAgent
 from src.agents.summary_agent import SummaryAgent
-from src.persistence.repositories.conversation_state_repository import SQLConversationStateStore
-from src.persistence.repositories.conversation_memory_repository import SQLConversationMemoryStore
+from src.conversation.conversation_updater import ConversationUpdater
+from src.core.config import (
+    DEFAULT_ALREADY_ESCALATED_RESPONSE,
+    DEFAULT_CLOSED_TICKET_RESPONSE,
+    DEFAULT_FORCE_ESCALATION_RESPONSE,
+    DEFAULT_RETRIEVAL_K,
+)
 from src.core.conversation_state_models import ConversationState
-
-from src.core.default_models import PredefinedClosingResponse, PredefinedEscalationResponse
-from src.core.response_models import ResponseOutput, ResponseInput
+from src.core.default_models import (
+    PredefinedClosingResponse,
+    PredefinedEscalationResponse,
+)
 from src.core.memory_models import MemoryUpdateInput
-from src.core.retrieval_policy_models import RetrievalPolicyInput
 from src.core.query_rewriter_models import QueryRewriterInput
+from src.core.response_models import ResponseInput, ResponseOutput
+from src.core.retrieval_policy_models import RetrievalPolicyInput
 from src.core.retrieval_tool_models import RetrievalToolInput
 from src.core.summary_models import SummaryInput
-from src.core.config import DEFAULT_ALREADY_ESCALATED_RESPONSE, DEFAULT_CLOSED_TICKET_RESPONSE, DEFAULT_FORCE_ESCALATION_RESPONSE, DEFAULT_RETRIEVAL_K
+from src.graph.graph_state import InitialRoute, SupportGraphState
+from src.persistence.repositories.conversation_memory_repository import (
+    SQLConversationMemoryStore,
+)
+from src.persistence.repositories.conversation_state_repository import (
+    SQLConversationStateStore,
+)
+from src.rag.context_builder import ContextBuilder
+from src.rag.retrieval_policy import RetrievalPolicy
+from src.tools.retriever_tool import RetrieverTool
+from src.validation.input_validator import InputValidator
 
 
 def append_node(state: SupportGraphState, node_name: str) -> list[str]:
@@ -266,7 +277,7 @@ def make_generate_new_memory_node(memory_agent: MemoryAgent) -> Callable[[Suppor
             raise ValueError("previous_conversation_memory is required before updating memory")
 
         if not isinstance(response, ResponseOutput):
-            raise ValueError("state response must be a ResponseOutput object if new memory generation is wanted")
+            raise TypeError("state response must be a ResponseOutput object if new memory generation is wanted")
 
         previous_memory = loaded_memory.memory
 

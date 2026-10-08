@@ -1,13 +1,13 @@
 import os
+
 import pytest
+from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import ValidationError
-from langchain_core.messages import SystemMessage, HumanMessage
 
-from src.core.request_models import Ticket
-from src.core.summary_models import SummaryOutput
-from src.core.response_models import ResponseInput, ResponseOutput
 from src.agents.response_agent import ResponseAgent
-
+from src.core.request_models import Ticket
+from src.core.response_models import ResponseInput, ResponseOutput
+from src.core.summary_models import SummaryOutput
 
 # ============================================================
 # Fixtures

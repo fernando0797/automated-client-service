@@ -1,6 +1,7 @@
-from src.rag.loader import KnowledgeLoader
-from src.core.config import KNOWLEDGE_PATH
 import pytest
+
+from src.core.config import KNOWLEDGE_PATH
+from src.rag.loader import KnowledgeLoader
 
 
 @pytest.fixture(scope="module")

@@ -1,12 +1,11 @@
 import os
 
 import pytest
+from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import ValidationError
-from langchain_core.messages import SystemMessage, HumanMessage
 
 from src.agents.query_rewriter_agent import QueryRewriterAgent
 from src.core.query_rewriter_models import QueryRewriterInput, QueryRewriterOutput
-
 
 # ============================================================
 # MODEL TESTS

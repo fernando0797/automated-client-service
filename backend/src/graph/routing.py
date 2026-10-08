@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from src.core.response_models import ResponseOutput
 from src.graph.graph_state import SupportGraphState
-
 
 InitialRoute = Literal[
     "already_closed",

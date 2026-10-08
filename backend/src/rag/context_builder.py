@@ -1,11 +1,10 @@
-from typing import List
 
-from src.core.models import RetrievalResult
 from src.core.context_models import BuiltContext
+from src.core.models import RetrievalResult
 
 
 class ContextBuilder:
-    def build(self, retrieval_results: List[RetrievalResult]) -> BuiltContext:
+    def build(self, retrieval_results: list[RetrievalResult]) -> BuiltContext:
         context_text = self._build_context_text(retrieval_results)
         return BuiltContext(
             context_text=context_text,
@@ -13,7 +12,7 @@ class ContextBuilder:
             total_chars=len(context_text)
         )
 
-    def _build_context_text(self, retrieval_results: List[RetrievalResult]) -> str:
+    def _build_context_text(self, retrieval_results: list[RetrievalResult]) -> str:
         domain = []
         subdomain = []
         product = []
@@ -54,7 +53,7 @@ class ContextBuilder:
 
         return "\n\n".join(parts)
 
-    def _build_text_section(self, section_list: List[str], section_type: str) -> str:
+    def _build_text_section(self, section_list: list[str], section_type: str) -> str:
         if not section_list:
             return ""
         return f"{section_type}\n" + "\n\n".join(section_list)

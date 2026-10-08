@@ -1,9 +1,10 @@
-from pydantic import BaseModel, Field
 from typing import Literal
 
-from src.core.retrieval_policy_models import RetrievalPolicyDecision
-from src.core.request_models import Ticket
+from pydantic import BaseModel, Field
+
 from src.core.models import RetrievalResult
+from src.core.request_models import Ticket
+from src.core.retrieval_policy_models import RetrievalPolicyDecision
 
 
 class RetrievalToolInput(BaseModel):

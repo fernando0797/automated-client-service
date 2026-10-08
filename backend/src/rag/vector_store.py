@@ -1,4 +1,3 @@
-from typing import List, Tuple
 
 from src.core.models import KnowledgeChunk
 
@@ -6,10 +5,10 @@ from src.core.models import KnowledgeChunk
 class VectorStore:
     def __init__(self):
         self.index: list[list[float]] | None = None
-        self.chunks: List[KnowledgeChunk] = []
+        self.chunks: list[KnowledgeChunk] = []
         self.dimension: int | None = None
 
-    def build_index(self, embeddings, chunks: List[KnowledgeChunk]) -> None:
+    def build_index(self, embeddings, chunks: list[KnowledgeChunk]) -> None:
         if len(embeddings) == 0:
             raise ValueError("Embeddings list cannot be empty.")
 
@@ -30,13 +29,13 @@ class VectorStore:
 
         self.chunks = chunks
 
-    def search(self, query_embedding, k: int = 3) -> List[KnowledgeChunk]:
+    def search(self, query_embedding, k: int = 3) -> list[KnowledgeChunk]:
         if self.index is None:
             raise ValueError("The vector index has not been built yet.")
 
         return [self.chunks[index] for index, _ in self._nearest(query_embedding, k)]
 
-    def search_with_scores(self, query_embedding, k: int = 3) -> List[Tuple[KnowledgeChunk, float]]:
+    def search_with_scores(self, query_embedding, k: int = 3) -> list[tuple[KnowledgeChunk, float]]:
         if self.index is None:
             raise ValueError("The vector index has not been built yet.")
 

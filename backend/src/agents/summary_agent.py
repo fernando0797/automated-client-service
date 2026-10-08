@@ -1,8 +1,8 @@
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 
-from src.core.summary_models import SummaryInput, SummaryOutput
 from src.core.config import GOOGLE_API_KEY
+from src.core.summary_models import SummaryInput, SummaryOutput
 
 
 class SummaryAgent:
@@ -10,6 +10,7 @@ class SummaryAgent:
         self.llm = ChatGoogleGenerativeAI(
             model=model_name,
             temperature=temperature,
+            api_key=GOOGLE_API_KEY,
         )
 
         self.structured_llm = self.llm.with_structured_output(SummaryOutput)

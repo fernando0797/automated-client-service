@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
-from src.core.request_models import Ticket
 from src.core.context_models import BuiltContext
+from src.core.request_models import Ticket
 
 
 class SummaryInput(BaseModel):

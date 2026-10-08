@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from src.core.conversation_state_models import ConversationState
 from src.conversation.conversation_state_store import InMemoryConversationStateStore
+from src.core.conversation_state_models import ConversationState
 
 
 @pytest.fixture

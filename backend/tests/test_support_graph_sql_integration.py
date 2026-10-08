@@ -39,7 +39,6 @@ from src.rag.context_builder import ContextBuilder
 from src.rag.retrieval_policy import RetrievalPolicy
 from src.tools.retriever_tool import RetrieverTool
 
-
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------
@@ -154,7 +153,7 @@ def get_trace_rows(db: Session, ticket_id: str) -> list[ConversationTraceORM]:
 # ---------------------------------------------------------------------
 
 
-class FakeInputValidator():
+class FakeInputValidator:
     def validate(self, ticket: Ticket) -> Ticket:
         return ticket
 

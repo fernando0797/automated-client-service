@@ -1,5 +1,5 @@
+from src.core.models import KnowledgeChunk, RetrievalResult
 from src.rag.context_builder import ContextBuilder
-from src.core.models import RetrievalResult, KnowledgeChunk
 
 
 def make_result(

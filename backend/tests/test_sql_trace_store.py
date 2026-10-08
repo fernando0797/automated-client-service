@@ -16,7 +16,6 @@ from src.persistence.database import create_db_session
 from src.persistence.models import ConversationTraceORM
 from src.persistence.repositories.turn_trace_repository import SQLTraceStore
 
-
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------

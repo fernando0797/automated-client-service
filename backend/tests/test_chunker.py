@@ -1,8 +1,9 @@
-from src.core.models import KnowledgeChunk
-from src.rag.loader import KnowledgeLoader
-from src.core.config import KNOWLEDGE_PATH
-from src.rag.chunking import Chunker
 import pytest
+
+from src.core.config import KNOWLEDGE_PATH
+from src.core.models import KnowledgeChunk
+from src.rag.chunking import Chunker
+from src.rag.loader import KnowledgeLoader
 
 
 @pytest.fixture(scope="module")

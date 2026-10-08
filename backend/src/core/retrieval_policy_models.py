@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from src.core.request_models import Ticket
 
-
 RetrievalMode = Literal["none", "filter", "semantic", "hybrid"]
 
 RetrievalDecisionType = Literal[

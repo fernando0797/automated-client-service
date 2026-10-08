@@ -7,7 +7,6 @@ from src.core.retrieval_policy_models import RetrievalPolicyDecision
 from src.core.retrieval_tool_models import RetrievalToolInput, RetrievalToolOutput
 from src.tools.retriever_tool import RetrieverTool
 
-
 # ---------------------------------------------------------------------
 # Helpers / Fixtures
 # ---------------------------------------------------------------------

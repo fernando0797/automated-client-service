@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import List, Dict
 
 from src.core.models import KnowledgeChunk, RetrievalResult
 from src.core.request_models import Ticket
@@ -8,7 +7,7 @@ from src.rag.vector_store import VectorStore
 
 
 class Retriever:
-    def __init__(self, chunks: List[KnowledgeChunk], embedder: Embedder, vectorstore: VectorStore):
+    def __init__(self, chunks: list[KnowledgeChunk], embedder: Embedder, vectorstore: VectorStore):
         self.chunks = chunks
         self.embedder = embedder
         self.vectorstore = vectorstore
@@ -18,7 +17,7 @@ class Retriever:
             chunk.chunk_id: num for num, chunk in enumerate(self.chunks)
         }
 
-    def hybrid_retrieve(self, ticket: Ticket, query: str | None = None, k: int = 5, semantic_relative_ratio: float = 1.30) -> List[RetrievalResult]:
+    def hybrid_retrieve(self, ticket: Ticket, query: str | None = None, k: int = 5, semantic_relative_ratio: float = 1.30) -> list[RetrievalResult]:
         if k <= 0:
             k = 5
 
@@ -71,7 +70,7 @@ class Retriever:
 
         return selected[:k]
 
-    def filter_retrieve(self, ticket: Ticket, query: str | None = None, k: int | None = None) -> List[RetrievalResult]:
+    def filter_retrieve(self, ticket: Ticket, query: str | None = None, k: int | None = None) -> list[RetrievalResult]:
         effective_query = self._build_query(ticket, query)
         query_embedding = self._embed_query(effective_query)
 
@@ -93,8 +92,7 @@ class Retriever:
         elif k <= 0:
             k = 5
 
-        if k > len(filtered_chunks):
-            k = len(filtered_chunks)
+        k = min(k, len(filtered_chunks))
 
         results = filter_vectorstore.search_with_scores(query_embedding, k)
 
@@ -106,12 +104,11 @@ class Retriever:
 
         return filtered_results
 
-    def semantic_retrieve(self, ticket: Ticket, query: str | None = None, k: int = 5) -> List[RetrievalResult]:
+    def semantic_retrieve(self, ticket: Ticket, query: str | None = None, k: int = 5) -> list[RetrievalResult]:
         if k <= 0:
             k = 5
 
-        if k > len(self.chunks):
-            k = len(self.chunks)
+        k = min(k, len(self.chunks))
 
         effective_query = self._build_query(ticket, query)
         query_embedding = self._embed_query(effective_query)
@@ -126,17 +123,11 @@ class Retriever:
 
         return semantic_results
 
-    def _filter_chunks(self, ticket: Ticket) -> List[KnowledgeChunk]:
+    def _filter_chunks(self, ticket: Ticket) -> list[KnowledgeChunk]:
         filtered_chunks = []
 
         for chunk in self.chunks:
-            if chunk.metadata.get("domain") == ticket.domain and chunk.type == "domain":
-                filtered_chunks.append(chunk)
-            elif chunk.metadata.get("subdomain") == ticket.subdomain and chunk.type == "subdomain":
-                filtered_chunks.append(chunk)
-            elif chunk.metadata.get("product") == ticket.product and chunk.type == "product":
-                filtered_chunks.append(chunk)
-            elif chunk.metadata.get("subdomain") == ticket.subdomain and chunk.metadata.get("product") == ticket.product and chunk.type == "cross_doc":
+            if chunk.metadata.get("domain") == ticket.domain and chunk.type == "domain" or chunk.metadata.get("subdomain") == ticket.subdomain and chunk.type == "subdomain" or chunk.metadata.get("product") == ticket.product and chunk.type == "product" or chunk.metadata.get("subdomain") == ticket.subdomain and chunk.metadata.get("product") == ticket.product and chunk.type == "cross_doc":
                 filtered_chunks.append(chunk)
 
         return filtered_chunks

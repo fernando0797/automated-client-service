@@ -15,7 +15,6 @@ from src.core.retrieval_policy_models import (
 from src.rag.retrieval_policy import RetrievalPolicy
 from src.validation.input_validator import InputValidator
 
-
 # =============================================================================
 # Helpers
 # =============================================================================

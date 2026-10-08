@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from src.core.models import KnowledgeChunk, KnowledgeDocument
 
 

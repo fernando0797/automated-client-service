@@ -378,10 +378,7 @@ class RetrievalPolicy:
 
         numeric_part = re.sub(r"\D", "", normalized_turn_id)
 
-        if numeric_part and int(numeric_part) == 1:
-            return True
-
-        return False
+        return bool(numeric_part and int(numeric_part) == 1)
 
     def _is_clarification_turn(self, description: str) -> bool:
         if not description:

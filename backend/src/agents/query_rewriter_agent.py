@@ -1,14 +1,17 @@
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 
-from src.core.query_rewriter_models import QueryRewriterInput, QueryRewriterOutput
 from src.core.config import GOOGLE_API_KEY
+from src.core.query_rewriter_models import QueryRewriterInput, QueryRewriterOutput
 
 
 class QueryRewriterAgent:
     def __init__(self, model_name: str = "gemini-2.5-flash", temperature: float = 0.0):
         self.llm = ChatGoogleGenerativeAI(
-            model=model_name, temperature=temperature)
+            model=model_name,
+            temperature=temperature,
+            api_key=GOOGLE_API_KEY,
+        )
         self.structured_llm = self.llm.with_structured_output(
             QueryRewriterOutput)
 

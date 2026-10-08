@@ -3,13 +3,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from src.core.conversation_state_models import ConversationState
+from src.core.default_models import (
+    PredefinedClosingResponse,
+    PredefinedEscalationResponse,
+)
 from src.core.request_models import Ticket
 from src.core.response_models import ResponseOutput
 from src.core.retrieval_policy_models import RetrievalPolicyDecision
-from src.core.default_models import (
-    PredefinedEscalationResponse,
-    PredefinedClosingResponse,
-)
 
 
 class ConversationUpdater:

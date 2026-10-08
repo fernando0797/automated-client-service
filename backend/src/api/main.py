@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from src.api.dependencies import AppServices, build_app_services, check_database_connection, get_api_db_session, get_api_status, build_support_graph_runner
+from src.api.dependencies import (
+    AppServices,
+    build_app_services,
+    build_support_graph_runner,
+    check_database_connection,
+    get_api_db_session,
+    get_api_status,
+)
 from src.api.schemas import ChatRequest, ChatResponse
 from src.core.config import CORS_ORIGINS
 from src.core.request_models import Ticket
@@ -47,7 +55,9 @@ def health() -> dict[str, str]:
 
 
 @app.get("/health/db")
-def health_db(session: Session = Depends(get_api_db_session)) -> dict[str, str | bool]:
+def health_db(
+    session: Annotated[Session, Depends(get_api_db_session)],
+) -> dict[str, str | bool]:
     database_ok = check_database_connection(session)
 
     return {
@@ -56,7 +66,9 @@ def health_db(session: Session = Depends(get_api_db_session)) -> dict[str, str |
 
 
 @app.get("/health/services")
-def health_services(services: AppServices = Depends(get_app_services)) -> dict[str, str | bool]:
+def health_services(
+    services: Annotated[AppServices, Depends(get_app_services)],
+) -> dict[str, str | bool]:
     return {
         "status": "ok",
         "services_loaded": services is not None,
@@ -64,7 +76,11 @@ def health_services(services: AppServices = Depends(get_app_services)) -> dict[s
 
 
 @app.post("/chat", response_model=ChatResponse)
-def chat(request: ChatRequest, session: Session = Depends(get_api_db_session), services: AppServices = Depends(get_app_services)) -> ChatResponse:
+def chat(
+    request: ChatRequest,
+    session: Annotated[Session, Depends(get_api_db_session)],
+    services: Annotated[AppServices, Depends(get_app_services)],
+) -> ChatResponse:
     ticket = Ticket(
         ticket_id=request.ticket_id,
         turn_id=request.turn_id,

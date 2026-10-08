@@ -12,7 +12,6 @@ from src.persistence.repositories.conversation_memory_repository import (
     SQLConversationMemoryStore,
 )
 
-
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------

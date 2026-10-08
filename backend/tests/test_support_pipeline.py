@@ -4,29 +4,25 @@ from typing import Any
 
 import pytest
 
-from src.pipeline.support_pipeline import SupportPipeline
-
-from src.core.request_models import Ticket
-from src.core.conversation_state_models import ConversationState
-from src.core.memory_models import ConversationMemory
-from src.core.retrieval_policy_models import RetrievalPolicyDecision
-from src.core.query_rewriter_models import QueryRewriterOutput
-from src.core.retrieval_tool_models import RetrievalToolOutput
+from src.conversation.conversation_state_loader import ConversationStateLoader
+from src.conversation.conversation_state_store import InMemoryConversationStateStore
+from src.conversation.conversation_updater import ConversationUpdater
 from src.core.context_models import BuiltContext
-from src.core.summary_models import SummaryOutput
-from src.core.response_models import ResponseOutput
+from src.core.conversation_state_models import ConversationState
 from src.core.default_models import (
     PredefinedClosingResponse,
     PredefinedEscalationResponse,
 )
-
-from src.conversation.conversation_state_store import InMemoryConversationStateStore
-from src.conversation.conversation_state_loader import ConversationStateLoader
-from src.conversation.conversation_updater import ConversationUpdater
-
-from src.memory.memory_store import InMemoryConversationStore
+from src.core.memory_models import ConversationMemory
+from src.core.query_rewriter_models import QueryRewriterOutput
+from src.core.request_models import Ticket
+from src.core.response_models import ResponseOutput
+from src.core.retrieval_policy_models import RetrievalPolicyDecision
+from src.core.retrieval_tool_models import RetrievalToolOutput
+from src.core.summary_models import SummaryOutput
 from src.memory.memory_loader import MemoryLoader
-
+from src.memory.memory_store import InMemoryConversationStore
+from src.pipeline.support_pipeline import SupportPipeline
 
 # =============================================================================
 # Helpers
@@ -949,7 +945,7 @@ def test_pipeline_later_rag_without_memory_skips_query_rewriter(
     (
         pipeline,
         _input_validator,
-        retrieval_policy,
+        _retrieval_policy,
         query_rewriter_agent,
         retriever_tool,
         context_builder,

@@ -4,9 +4,9 @@ from datetime import datetime
 
 import pytest
 
-from src.core.conversation_state_models import ConversationState
 from src.conversation.conversation_state_loader import ConversationStateLoader
 from src.conversation.conversation_state_store import InMemoryConversationStateStore
+from src.core.conversation_state_models import ConversationState
 
 
 @pytest.fixture
