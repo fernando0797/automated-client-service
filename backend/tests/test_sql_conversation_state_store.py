@@ -13,6 +13,8 @@ from src.persistence.repositories.conversation_state_repository import (
     SQLConversationStateStore,
 )
 
+pytestmark = pytest.mark.integration
+
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------

@@ -39,6 +39,8 @@ from src.rag.context_builder import ContextBuilder
 from src.rag.retrieval_policy import RetrievalPolicy
 from src.tools.retriever_tool import RetrieverTool
 
+pytestmark = pytest.mark.integration
+
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------

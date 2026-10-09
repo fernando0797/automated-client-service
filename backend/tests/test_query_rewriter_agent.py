@@ -343,6 +343,7 @@ def _live_llm_enabled() -> bool:
     return os.getenv("RUN_LIVE_LLM_TESTS") == "1"
 
 
+@pytest.mark.integration
 @pytest.mark.live_llm
 @pytest.mark.skipif(
     not _live_llm_enabled(),
@@ -372,6 +373,7 @@ def test_live_rewrite_follow_up_with_memory_returns_useful_query():
     assert any(term in query_lower for term in ["hot", "heat", "overheat"])
 
 
+@pytest.mark.integration
 @pytest.mark.live_llm
 @pytest.mark.skipif(
     not _live_llm_enabled(),

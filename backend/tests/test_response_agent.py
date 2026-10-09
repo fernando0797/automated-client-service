@@ -701,6 +701,7 @@ def test_generate_response_can_return_closing(
 # 4. Integration tests with real LLM call
 # ============================================================
 
+@pytest.mark.integration
 @pytest.mark.live_llm
 @pytest.mark.skipif(
     not os.getenv("GOOGLE_API_KEY"),
@@ -760,6 +761,7 @@ def test_response_agent_real_llm_call_returns_response_output(
         assert result.escalation_channel == "none"
 
 
+@pytest.mark.integration
 @pytest.mark.live_llm
 @pytest.mark.skipif(
     not os.getenv("GOOGLE_API_KEY"),
@@ -784,6 +786,7 @@ def test_response_agent_real_llm_call_can_detect_closing(
     assert result.escalation_channel == "none"
 
 
+@pytest.mark.integration
 @pytest.mark.live_llm
 @pytest.mark.skipif(
     not os.getenv("GOOGLE_API_KEY"),

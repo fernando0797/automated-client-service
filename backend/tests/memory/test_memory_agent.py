@@ -770,6 +770,7 @@ requires_live_llm = pytest.mark.skipif(
 )
 
 
+@pytest.mark.integration
 @pytest.mark.live_llm
 @requires_live_llm
 def test_memory_agent_live_creates_first_memory():
@@ -813,6 +814,7 @@ def test_memory_agent_live_creates_first_memory():
     assert "update" in memory_lower
 
 
+@pytest.mark.integration
 @pytest.mark.live_llm
 @requires_live_llm
 def test_memory_agent_live_creates_first_memory_without_summary():
@@ -850,6 +852,7 @@ def test_memory_agent_live_creates_first_memory_without_summary():
     assert "battery" in memory_lower
 
 
+@pytest.mark.integration
 @pytest.mark.live_llm
 @requires_live_llm
 def test_memory_agent_live_updates_existing_memory():
@@ -897,6 +900,7 @@ def test_memory_agent_live_updates_existing_memory():
     assert "battery" in memory_lower
 
 
+@pytest.mark.integration
 @pytest.mark.live_llm
 @requires_live_llm
 def test_memory_agent_live_does_not_confuse_assistant_suggestion_with_user_action():
@@ -942,6 +946,7 @@ def test_memory_agent_live_does_not_confuse_assistant_suggestion_with_user_actio
     assert not any(phrase in memory_lower for phrase in forbidden_phrases)
 
 
+@pytest.mark.integration
 @pytest.mark.live_llm
 @requires_live_llm
 def test_memory_agent_live_prioritizes_current_turn_over_previous_memory():

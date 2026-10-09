@@ -395,6 +395,7 @@ def test_summarize_uses_built_messages(
 # 4. Integration test with real LLM call
 # ============================================================
 
+@pytest.mark.integration
 @pytest.mark.live_llm
 @pytest.mark.skipif(
     not os.getenv("GOOGLE_API_KEY"),
