@@ -75,6 +75,12 @@ jobs:
 
     env:
       APP_ENV: test
+      GOOGLE_API_KEY: dummy-key-for-mocked-tests
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: app_test
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
 
     defaults:
       run:
