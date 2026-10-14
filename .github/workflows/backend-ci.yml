@@ -116,7 +116,7 @@ jobs:
       needs.tests.result == 'success' &&
       (
       github.event_name == 'pull_request' ||
-      needs['live_llm'].result == 'success'
+      needs['live-llm'].result == 'success'
       )
       }} 
 
@@ -170,7 +170,7 @@ jobs:
       needs.tests.result == 'success' &&
       (
       github.event_name == 'pull_request' ||
-      needs['live_llm'].result == 'success'
+      needs['live-llm'].result == 'success'
       )
       }}
 
