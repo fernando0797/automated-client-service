@@ -1,4 +1,4 @@
-name: CI - Backend
+name: CI
 
 on:
   pull_request:
@@ -43,26 +43,26 @@ jobs:
         working-directory: backend
 
     steps:
-      - name: Descargar código
+      - name: Download code
         uses: actions/checkout@v7
 
-      - name: Instalar Python
+      - name: Install Python
         uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
-      - name: Instalar dependencias
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
 
-      - name: Crear tablas con Alembic
+      - name: Create tables with Alembic
         run: python -m alembic upgrade head
 
-      - name: Ejecutar Ruff
+      - name: Execute Ruff
         run: python -m ruff check .
 
-      - name: Ejecutar tests
+      - name: Execute tests
         run: python -m pytest -q -m "not live_llm" tests/
 
 
@@ -87,21 +87,53 @@ jobs:
         working-directory: backend
 
     steps:
-      - name: Descargar código
+      - name: Download code
         uses: actions/checkout@v7
 
-      - name: Instalar Python
+      - name: Install Python
         uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
-      - name: Instalar dependencias
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
 
-      - name: Tests con Gemini real
+      - name: Real Gemini tests
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY_TEST }}
           RUN_LIVE_LLM_TESTS: "1"
         run: python -m pytest -q -m "live_llm" tests/
+      
+  build-backend:
+    name: Build backend image
+    needs: tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download code
+        uses: actions/checkout@v7
+
+      - name: Build backend image
+        run: |
+          docker build \
+          -t tfg-backend:${{github.sha}} \
+          ./backend
+  
+  build-frontend:
+    name: Build frontend image
+    needs: tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download code
+        uses: actions/checkout@v7
+
+      - name: Build frontend image
+        run: |
+          docker build \
+          --build-arg VITE_API_URL=/api \
+          -t tfg-frontend:${{github.sha}} \
+          ./frontend
+
