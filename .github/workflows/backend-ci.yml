@@ -137,3 +137,25 @@ jobs:
           -t tfg-frontend:${{github.sha}} \
           ./frontend
 
+  aws-auth:
+    name: AWS - Test OIDC
+    needs: [build-backend, build-frontend]
+
+    if: github.event_name == "push" && github.ref == "refs/heads/main"
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+    
+    steps:
+      - name: configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with: 
+          role-to-assume: arn:aws:iam::327745426795:role/GitHubActionsTFGRole
+          aws-region: eu-south-2
+      
+      - name: check AWS identity
+        run: aws sts get-caller-identity
+
+
