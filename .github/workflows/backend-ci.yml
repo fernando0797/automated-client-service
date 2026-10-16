@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   pull_request:
@@ -8,6 +8,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  queue: max
 
 jobs:
 
@@ -161,7 +165,7 @@ jobs:
           $ECR_REGISTRY/tfg/backend:${{github.sha}}
   
   build-frontend:
-    name: Build frontend image
+    name: Build frontend image / Push ECR
     needs: [tests, live-llm]
 
     if: >-
