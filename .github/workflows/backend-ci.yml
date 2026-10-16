@@ -216,5 +216,103 @@ jobs:
           $ECR_REGISTRY/tfg/frontend:${{github.sha}}
 
 
+  deploy-backend:
+    name: Backend - Deploy ECS
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    needs:
+      - backend-build
+      - frontend-build
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::327745426795:role/GitHubActionsTFGRole
+          aws-region: eu-south-2
+
+      - name: ECR Login
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition tfg-backend \
+            --query taskDefinition \
+            > backend-task-definition.json
+
+      - name: Update image in task definition
+        id: backend-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: backend-task-definition.json
+          container-name: backend
+          image: ${{ steps.login-ecr.outputs.registry }}/tfg/backend:${{ github.sha }}
+
+      - name: Deploy backend
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.backend-task-def.outputs.task-definition }}
+          service: tfg-backend-service
+          cluster: tfg-cluster
+          wait-for-service-stability: true
+          wait-max-delay-seconds: 15
 
 
+  deploy-frontend:
+    name: Frontend - Deploy ECS
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    needs:
+      - backend-build
+      - frontend-build
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::327745426795:role/GitHubActionsTFGRole
+          aws-region: eu-south-2
+
+      - name: ECR Login
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition tfg-frontend \
+            --query taskDefinition \
+            > frontend-task-definition.json
+
+      - name: Update task definition image
+        id: frontend-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: frontend-task-definition.json
+          container-name: frontend
+          image: ${{ steps.login-ecr.outputs.registry }}/tfg-frontend:${{ github.sha }}
+
+      - name: Deploy frontend
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.frontend-task-def.outputs.task-definition }}
+          service: tfg-frontend-service
+          cluster: tfg-cluster
+          wait-for-service-stability: true
+          wait-max-delay-seconds: 15
